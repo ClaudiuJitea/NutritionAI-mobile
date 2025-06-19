@@ -1,0 +1,33 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="url(#grad1)" stroke="#1B5E20" stroke-width="8"/>
+  
+  <!-- Apple shape -->
+  <path d="M512 200 C400 200 320 280 320 400 C320 520 400 600 512 600 C624 600 704 520 704 400 C704 280 624 200 512 200 Z" fill="#FF5722" stroke="#D84315" stroke-width="4"/>
+  
+  <!-- Apple leaf -->
+  <path d="M512 200 C520 180 540 170 560 180 C570 185 565 200 550 210 C535 205 520 195 512 200 Z" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+  
+  <!-- AI Brain icon -->
+  <circle cx="512" cy="750" r="120" fill="#2196F3" stroke="#1565C0" stroke-width="4"/>
+  
+  <!-- Neural network lines -->
+  <g stroke="#FFFFFF" stroke-width="3" fill="none">
+    <circle cx="480" cy="720" r="8" fill="#FFFFFF"/>
+    <circle cx="544" cy="720" r="8" fill="#FFFFFF"/>
+    <circle cx="512" cy="780" r="8" fill="#FFFFFF"/>
+    <line x1="480" y1="720" x2="544" y2="720"/>
+    <line x1="480" y1="720" x2="512" y2="780"/>
+    <line x1="544" y1="720" x2="512" y2="780"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="512" y="950" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#FFFFFF">NutritionAI</text>
+</svg>

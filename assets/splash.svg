@@ -1,0 +1,59 @@
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A1D29;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F1419;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1284" height="2778" fill="url(#bgGrad)"/>
+  
+  <!-- Main icon centered -->
+  <g transform="translate(642, 1389)">
+    <!-- Background circle -->
+    <circle cx="0" cy="0" r="200" fill="url(#iconGrad)" stroke="#1B5E20" stroke-width="4"/>
+    
+    <!-- Apple shape -->
+    <path d="M0 -120 C-46 -120 -80 -86 -80 -40 C-80 6 -46 40 0 40 C46 40 80 6 80 -40 C80 -86 46 -120 0 -120 Z" fill="#FF5722" stroke="#D84315" stroke-width="2"/>
+    
+    <!-- Apple leaf -->
+    <path d="M0 -120 C4 -128 12 -132 20 -128 C24 -126 22 -120 18 -116 C14 -118 4 -122 0 -120 Z" fill="#4CAF50" stroke="#2E7D32" stroke-width="1"/>
+    
+    <!-- AI Brain icon -->
+    <circle cx="0" cy="100" r="50" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+    
+    <!-- Neural network lines -->
+    <g stroke="#FFFFFF" stroke-width="2" fill="none">
+      <circle cx="-15" cy="88" r="4" fill="#FFFFFF"/>
+      <circle cx="15" cy="88" r="4" fill="#FFFFFF"/>
+      <circle cx="0" cy="112" r="4" fill="#FFFFFF"/>
+      <line x1="-15" y1="88" x2="15" y2="88"/>
+      <line x1="-15" y1="88" x2="0" y2="112"/>
+      <line x1="15" y1="88" x2="0" y2="112"/>
+    </g>
+  </g>
+  
+  <!-- App name -->
+  <text x="642" y="1700" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="#FFFFFF">NutritionAI</text>
+  
+  <!-- Tagline -->
+  <text x="642" y="1780" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="#B0BEC5">AI-Powered Nutrition Tracking</text>
+  
+  <!-- Loading indicator -->
+  <g transform="translate(642, 2200)">
+    <circle cx="-30" cy="0" r="8" fill="#4CAF50" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="0" cy="0" r="8" fill="#4CAF50" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <circle cx="30" cy="0" r="8" fill="#4CAF50" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+  </g>
+</svg>
