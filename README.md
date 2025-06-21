@@ -4,12 +4,27 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 
 <div align="center">
   <img src="./assets/icon.png" alt="NutritionAI Logo" width="128" height="128">
-  
+
+  <!-- First row of 3 images -->
+  <div style="display: flex; justify-content: center; gap: 10px; margin: 10px 0;">
+    <img src="https://github.com/user-attachments/assets/ac50577c-4314-4968-a9f6-fc8962f2919c" alt="IMG-20250621-WA0009" width="200">
+    <img src="https://github.com/user-attachments/assets/9b463245-cc44-40db-b887-cfab0876de48" alt="IMG-20250621-WA0008" width="200">
+    <img src="https://github.com/user-attachments/assets/91ec9a9b-3fbd-4a14-a366-47cf24df2747" alt="IMG-20250621-WA0006" width="200">
+  </div>
+
+  <!-- Second row of 3 images -->
+  <div style="display: flex; justify-content: center; gap: 10px; margin: 10px 0;">
+    <img src="https://github.com/user-attachments/assets/d2cb8151-fe24-4127-ae6f-9af8788e8646" alt="IMG-20250621-WA0005" width="200">
+    <img src="https://github.com/user-attachments/assets/69766e67-dc55-4f15-92a2-427d39ce60ba" alt="IMG-20250621-WA0004" width="200">
+    <img src="https://github.com/user-attachments/assets/fb22ed6d-3eb3-485d-a7fe-e3a9a964744e" alt="IMG-20250621-WA0007" width="200">
+  </div>
+
   [![Expo](https://img.shields.io/badge/Expo-SDK%2052-000020.svg?style=flat&logo=expo)](https://expo.dev/)
   [![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB.svg?style=flat&logo=react)](https://reactnative.dev/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
+
 
 ## ✨ Features
 
