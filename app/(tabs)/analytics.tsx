@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Text, Card, SegmentedButtons } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -16,12 +17,15 @@ type ChartType = 'calories' | 'macros' | 'water';
 export default function AnalyticsScreen() {
   const db = useSQLiteContext();
   const [dbService] = useState(() => new DatabaseService(db));
+  const { chart } = useLocalSearchParams<{ chart?: string }>();
   const [viewType, setViewType] = useState<ViewType>('week');
   const [chartType, setChartType] = useState<ChartType>('calories');
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats[]>([]);
+  const [waterStats, setWaterStats] = useState<{ date: string; water: number }[]>([]);
   const [dailyNutrition, setDailyNutrition] = useState<DailyNutrition | null>(null);
   const [consistencyDays, setConsistencyDays] = useState(0);
   const [averageCalories, setAverageCalories] = useState(0);
+  const [averageWater, setAverageWater] = useState(0);
 
   const loadAnalyticsData = async () => {
     try {
@@ -30,19 +34,25 @@ export default function AnalyticsScreen() {
         ? subDays(endDate, 6) 
         : subDays(endDate, 29);
 
-      const [stats, todayNutrition, consistency] = await Promise.all([
+      const [stats, waterData, todayNutrition, consistency] = await Promise.all([
         dbService.getWeeklyStats(startDate, endDate),
+        dbService.getWaterStats(startDate, endDate),
         dbService.getDailyTotals(format(new Date(), 'yyyy-MM-dd')),
         dbService.getConsistencyDays(startDate, endDate),
       ]);
 
       setWeeklyStats(stats);
+      setWaterStats(waterData);
       setDailyNutrition(todayNutrition);
       setConsistencyDays(consistency);
       
       // Calculate average calories
       const totalCalories = stats.reduce((sum, day) => sum + day.calories, 0);
       setAverageCalories(stats.length > 0 ? totalCalories / stats.length : 0);
+      
+      // Calculate average water
+      const totalWater = waterData.reduce((sum, day) => sum + day.water, 0);
+      setAverageWater(waterData.length > 0 ? totalWater / waterData.length : 0);
     } catch (error) {
       console.error('Error loading analytics data:', error);
     }
@@ -51,6 +61,20 @@ export default function AnalyticsScreen() {
   useEffect(() => {
     loadAnalyticsData();
   }, [viewType]);
+
+  // Handle chart parameter from navigation
+  useEffect(() => {
+    if (chart && (chart === 'calories' || chart === 'macros' || chart === 'water')) {
+      setChartType(chart as ChartType);
+    }
+  }, [chart]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadAnalyticsData();
+    }, [viewType])
+  );
 
   const chartConfig = {
     backgroundColor: theme.colors.surface,
@@ -80,6 +104,7 @@ export default function AnalyticsScreen() {
       const date = subDays(endDate, i);
       const dateString = format(date, 'yyyy-MM-dd');
       const dayData = weeklyStats.find(stat => stat.date === dateString);
+      const waterData = waterStats.find(stat => stat.date === dateString);
       
       labels.push(format(date, viewType === 'week' ? 'EEE' : 'M/d'));
       
@@ -88,8 +113,7 @@ export default function AnalyticsScreen() {
           data.push(dayData?.calories || 0);
           break;
         case 'water':
-          // For water, we'll need to get it from daily nutrition
-          data.push(0); // Placeholder - would need separate water stats
+          data.push(waterData?.water || 0);
           break;
         default:
           data.push(dayData?.calories || 0);
@@ -193,19 +217,30 @@ export default function AnalyticsScreen() {
               onSecondaryContainer: theme.colors.background,
               outline: theme.colors.border,
               onSurface: theme.colors.text,
+              surface: theme.colors.surface,
             },
+            roundness: theme.borderRadius.lg,
           }}
         />
       </View>
 
       {/* Summary Stats */}
       <View style={styles.statsGrid}>
+        {chartType === 'water' ? (
+          <StatCard
+            title="Avg Water"
+            value={averageWater}
+            unit=" ml"
+            subtitle="per day"
+          />
+        ) : (
         <StatCard
           title="Avg Calories"
           value={averageCalories}
           unit=" cal"
           subtitle="per day"
         />
+        )}
         <StatCard
           title="Consistency"
           value={consistencyDays}
@@ -231,7 +266,9 @@ export default function AnalyticsScreen() {
               onSecondaryContainer: theme.colors.background,
               outline: theme.colors.border,
               onSurface: theme.colors.text,
+              surface: theme.colors.surface,
             },
+            roundness: theme.borderRadius.lg,
           }}
         />
       </View>
@@ -273,9 +310,41 @@ export default function AnalyticsScreen() {
                   <Text style={styles.noDataSubtext}>Start logging food to see your macronutrient breakdown</Text>
                 </View>
               )}
-              
-              {weeklyStats.length > 0 && (
-                <>
+            </>
+          )}
+          
+          {chartType === 'water' && (
+            <>
+              <Text style={styles.chartTitle}>Water Intake Trend</Text>
+              {waterStats.length > 0 ? (
+                <LineChart
+                  data={getChartData()}
+                  width={screenWidth - 64}
+                  height={220}
+                  chartConfig={{
+                    ...chartConfig,
+                    color: (opacity = 1) => `rgba(0, 212, 170, ${opacity})`,
+                  }}
+                  style={styles.chart}
+                  bezier
+                  yAxisLabel=""
+                  yAxisSuffix="ml"
+                />
+              ) : (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No water data yet</Text>
+                  <Text style={styles.noDataSubtext}>Start logging water to see your intake trends</Text>
+                </View>
+              )}
+            </>
+          )}
+        </Card.Content>
+      </Card>
+
+      {/* Weekly Macros Trend - Separate Card */}
+      {chartType === 'macros' && weeklyStats.length > 0 && (
+        <Card style={styles.chartCard}>
+          <Card.Content>
                   <Text style={styles.chartTitle}>Weekly Macros Trend</Text>
                   <BarChart
                     data={getMacrosBarData()}
@@ -287,26 +356,27 @@ export default function AnalyticsScreen() {
                     yAxisLabel="g"
                     yAxisSuffix=""
                   />
-                </>
-              )}
-            </>
-          )}
-          
-          {chartType === 'water' && (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>Water analytics coming soon</Text>
-              <Text style={styles.noDataSubtext}>We're working on detailed water intake analytics</Text>
-            </View>
-          )}
         </Card.Content>
       </Card>
+      )}
 
       {/* Detailed Stats */}
       {dailyNutrition && (
         <Card style={styles.detailsCard}>
           <Card.Content>
-            <Text style={styles.detailsTitle}>Today's Nutrition</Text>
+            <Text style={styles.detailsTitle}>
+              {chartType === 'water' ? "Today's Hydration" : "Today's Nutrition"}
+            </Text>
             <View style={styles.detailsGrid}>
+              {chartType === 'water' ? (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Water Intake</Text>
+                  <Text style={[styles.detailValue, { color: theme.colors.primary }]}>
+                    {Math.round(dailyNutrition.water)} ml
+                  </Text>
+                </View>
+              ) : (
+                <>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Calories</Text>
                 <Text style={[styles.detailValue, { color: theme.colors.chart.calories }]}>
@@ -331,6 +401,8 @@ export default function AnalyticsScreen() {
                   {Math.round(dailyNutrition.fat)}g
                 </Text>
               </View>
+                </>
+              )}
             </View>
           </Card.Content>
         </Card>
@@ -339,8 +411,33 @@ export default function AnalyticsScreen() {
       {/* Insights */}
       <Card style={styles.insightsCard}>
         <Card.Content>
-          <Text style={styles.insightsTitle}>📊 Insights</Text>
+          <Text style={styles.insightsTitle}>Insights</Text>
           <View style={styles.insightsList}>
+            {chartType === 'water' ? (
+              <>
+                {averageWater > 0 && (
+                  <Text style={styles.insightItem}>
+                    • Your average daily water intake is {Math.round(averageWater)} ml
+                  </Text>
+                )}
+                {averageWater >= 2000 && (
+                  <Text style={styles.insightItem}>
+                    • Great hydration habits! You're meeting recommended water intake
+                  </Text>
+                )}
+                {averageWater < 1500 && averageWater > 0 && (
+                  <Text style={styles.insightItem}>
+                    • Consider increasing your daily water intake for better hydration
+                  </Text>
+                )}
+                {waterStats.length > 0 && (
+                  <Text style={styles.insightItem}>
+                    • You've logged water for {waterStats.length} out of {viewType === 'week' ? '7' : '30'} days
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
             {averageCalories > 0 && (
               <Text style={styles.insightItem}>
                 • Your average daily intake is {Math.round(averageCalories)} calories
@@ -353,13 +450,15 @@ export default function AnalyticsScreen() {
             )}
             {consistencyDays >= (viewType === 'week' ? 5 : 20) && (
               <Text style={styles.insightItem}>
-                • Great consistency! Keep up the good work 🎉
+                    • Great consistency! Keep up the good work
               </Text>
             )}
             {weeklyStats.length > 0 && (
               <Text style={styles.insightItem}>
                 • Track more days to unlock detailed insights and trends
               </Text>
+                )}
+              </>
             )}
           </View>
         </Card.Content>
@@ -379,6 +478,8 @@ const styles = StyleSheet.create({
   },
   segmentedButtons: {
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -473,7 +574,7 @@ const styles = StyleSheet.create({
   },
   insightsCard: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    marginBottom: 120,
     backgroundColor: theme.colors.surface,
   },
   insightsTitle: {

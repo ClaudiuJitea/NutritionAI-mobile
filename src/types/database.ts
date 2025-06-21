@@ -1,8 +1,13 @@
 export interface User {
   id: number;
   name: string;
+  weight?: number; // in kg
+  age?: number;
+  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  weight_goal?: 'maintain' | 'lose_steady' | 'lose_aggressive';
   calorie_goal: number;
   water_goal: number;
+  setup_completed: boolean;
   created_at: string;
 }
 

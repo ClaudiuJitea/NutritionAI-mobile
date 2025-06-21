@@ -18,8 +18,13 @@ export class DatabaseService {
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        weight REAL,
+        age INTEGER,
+        activity_level TEXT,
+        weight_goal TEXT,
         calorie_goal INTEGER DEFAULT 2000,
         water_goal INTEGER DEFAULT 2500,
+        setup_completed BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       
@@ -58,6 +63,9 @@ export class DatabaseService {
       );
     `);
 
+    // Migrate existing users table if needed
+    await this.migrateUsersTable();
+
     // Create default user if not exists
     const userExists = await this.db.getFirstAsync<{ count: number }>(
       'SELECT COUNT(*) as count FROM users WHERE id = 1'
@@ -65,9 +73,39 @@ export class DatabaseService {
     
     if (userExists?.count === 0) {
       await this.db.runAsync(
-        'INSERT INTO users (id, name, calorie_goal, water_goal) VALUES (1, ?, 2000, 2500)',
+        'INSERT INTO users (id, name, calorie_goal, water_goal, setup_completed) VALUES (1, ?, 2000, 2500, 0)',
         'Default User'
       );
+    }
+  }
+
+  private async migrateUsersTable(): Promise<void> {
+    try {
+      // Check if the new columns exist by querying the table schema
+      const tableInfo = await this.db.getAllAsync<{ name: string; type: string }>(
+        "PRAGMA table_info(users)"
+      );
+      
+      const columnNames = tableInfo.map(col => col.name);
+      
+      // Add missing columns if they don't exist
+      const columnsToAdd = [
+        { name: 'weight', sql: 'ALTER TABLE users ADD COLUMN weight REAL' },
+        { name: 'age', sql: 'ALTER TABLE users ADD COLUMN age INTEGER' },
+        { name: 'activity_level', sql: 'ALTER TABLE users ADD COLUMN activity_level TEXT' },
+        { name: 'weight_goal', sql: 'ALTER TABLE users ADD COLUMN weight_goal TEXT' },
+        { name: 'setup_completed', sql: 'ALTER TABLE users ADD COLUMN setup_completed BOOLEAN DEFAULT 0' },
+      ];
+
+      for (const column of columnsToAdd) {
+        if (!columnNames.includes(column.name)) {
+          await this.db.execAsync(column.sql);
+          console.log(`Added column: ${column.name}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error migrating users table:', error);
+      // Don't throw error to prevent app from crashing
     }
   }
 
@@ -211,6 +249,98 @@ export class DatabaseService {
     );
   }
 
+  async updateUserName(name: string, userId: number = 1): Promise<void> {
+    await this.db.runAsync(
+      'UPDATE users SET name = ? WHERE id = ?',
+      name,
+      userId
+    );
+  }
+
+  async updateUserProfile(profile: {
+    name: string;
+    weight: number;
+    age: number;
+    activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+    weight_goal: 'maintain' | 'lose_steady' | 'lose_aggressive';
+    calorie_goal?: number;
+    water_goal?: number;
+  }, userId: number = 1): Promise<void> {
+    const calorieGoal = profile.calorie_goal || this.calculateCalorieGoal(
+      profile.weight,
+      profile.age,
+      profile.activity_level,
+      profile.weight_goal
+    );
+    
+    const waterGoal = profile.water_goal || this.calculateWaterGoal(
+      profile.weight,
+      profile.age
+    );
+
+    await this.db.runAsync(
+      `UPDATE users SET 
+        name = ?, 
+        weight = ?, 
+        age = ?, 
+        activity_level = ?, 
+        weight_goal = ?, 
+        calorie_goal = ?, 
+        water_goal = ?, 
+        setup_completed = 1 
+      WHERE id = ?`,
+      profile.name,
+      profile.weight,
+      profile.age,
+      profile.activity_level,
+      profile.weight_goal,
+      calorieGoal,
+      waterGoal,
+      userId
+    );
+  }
+
+  private calculateCalorieGoal(
+    weight: number,
+    age: number,
+    activityLevel: string,
+    weightGoal: string
+  ): number {
+    // Basic BMR calculation using Mifflin-St Jeor equation (assuming male for simplicity)
+    // For a more accurate calculation, you'd need gender information
+    const bmr = 10 * weight + 6.25 * 175 - 5 * age + 5; // Assuming average height of 175cm
+    
+    // Activity multipliers
+    const activityMultipliers = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725,
+      very_active: 1.9
+    };
+    
+    const tdee = bmr * (activityMultipliers[activityLevel as keyof typeof activityMultipliers] || 1.2);
+    
+    // Adjust based on weight goal
+    switch (weightGoal) {
+      case 'lose_aggressive':
+        return Math.round(tdee - 750); // 1.5 lbs per week
+      case 'lose_steady':
+        return Math.round(tdee - 500); // 1 lb per week
+      case 'maintain':
+      default:
+        return Math.round(tdee);
+    }
+  }
+
+  private calculateWaterGoal(weight: number, age: number): number {
+    // Basic water calculation: 35ml per kg of body weight
+    // Adjusted for age (older adults need slightly more)
+    const baseWater = weight * 35;
+    const ageAdjustment = age > 65 ? 1.1 : 1.0;
+    return Math.round(baseWater * ageAdjustment);
+  }
+
   // Settings Operations
   async getSetting(key: string, userId: number = 1): Promise<string | null> {
     const result = await this.db.getFirstAsync<{ setting_value: string }>(
@@ -228,6 +358,25 @@ export class DatabaseService {
       userId,
       key,
       value
+    );
+  }
+
+  // Water Statistics
+  async getWaterStats(startDate: Date, endDate: Date, userId: number = 1): Promise<{ date: string; water: number }[]> {
+    const start = format(startDate, 'yyyy-MM-dd');
+    const end = format(endDate, 'yyyy-MM-dd');
+
+    return await this.db.getAllAsync<{ date: string; water: number }>(
+      `SELECT 
+         logged_date as date,
+         COALESCE(SUM(amount), 0) as water
+       FROM water_intake 
+       WHERE user_id = ? AND logged_date BETWEEN ? AND ?
+       GROUP BY logged_date
+       ORDER BY logged_date`,
+      userId,
+      start,
+      end
     );
   }
 

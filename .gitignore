@@ -198,6 +198,26 @@ $RECYCLE.BIN/
 
 # Database files
 *.db
+
+# Additional cleanup patterns
+*.tgz
+*.tar.gz
+.DS_Store?
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Package manager lock files (keep only yarn.lock)
+package-lock.json
+
+# Build artifacts
+*.sourcemap
+*.js.map
+
+# Temporary files
+.tmp/
+.temp/
 *.sqlite
 *.sqlite3
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Text, Card, TextInput, Button, SegmentedButtons } from 'react-native-paper';
+import { Text, Card, TextInput, Button, SegmentedButtons, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,16 +15,22 @@ export default function ManualFoodEntryScreen() {
   const params = useLocalSearchParams();
   const [dbService] = useState(() => new DatabaseService(db));
   
+  // Check if we're in edit mode
+  const isEditMode = !!params.editId;
+  const editId = params.editId ? parseInt(params.editId as string) : null;
+  
   const [selectedMeal, setSelectedMeal] = useState<MealType>((params.meal as MealType) || 'lunch');
-  const [foodDescription, setFoodDescription] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [unit, setUnit] = useState('serving');
-  const [calories, setCalories] = useState('');
-  const [protein, setProtein] = useState('');
-  const [carbs, setCarbs] = useState('');
-  const [fat, setFat] = useState('');
-  const [category, setCategory] = useState('');
+  const [foodDescription, setFoodDescription] = useState((params.foodDescription as string) || '');
+  const [quantity, setQuantity] = useState((params.quantity as string) || '1');
+  const [unit, setUnit] = useState((params.unit as string) || 'serving');
+  const [calories, setCalories] = useState((params.calories as string) || '');
+  const [protein, setProtein] = useState((params.protein as string) || '');
+  const [carbs, setCarbs] = useState((params.carbs as string) || '');
+  const [fat, setFat] = useState((params.fat as string) || '');
+  const [category, setCategory] = useState((params.category as string) || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const saveFoodEntry = async () => {
     if (!foodDescription.trim()) {
@@ -39,6 +45,24 @@ export default function ManualFoodEntryScreen() {
 
     setIsLoading(true);
     try {
+      if (isEditMode && editId) {
+        // Update existing food entry
+        await dbService.updateFoodEntry(editId, {
+          food_description: foodDescription.trim(),
+          quantity: parseFloat(quantity) || 1,
+          unit: unit.trim(),
+          meal_type: selectedMeal,
+          food_category: category.trim() || undefined,
+          calories: parseFloat(calories) || 0,
+          protein: parseFloat(protein) || 0,
+          carbs: parseFloat(carbs) || 0,
+          fat: parseFloat(fat) || 0,
+        });
+
+        setSuccessMessage('Food entry has been updated.');
+        setShowSuccessDialog(true);
+      } else {
+        // Add new food entry
       await dbService.addFoodEntry({
         user_id: 1,
         food_description: foodDescription.trim(),
@@ -53,14 +77,12 @@ export default function ManualFoodEntryScreen() {
         logged_date: format(new Date(), 'yyyy-MM-dd'),
       });
 
-      Alert.alert(
-        'Success',
-        'Food entry has been saved to your log.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      setSuccessMessage('Food entry has been saved to your log.');
+      setShowSuccessDialog(true);
+      }
     } catch (error) {
       console.error('Error saving food entry:', error);
-      Alert.alert('Error', 'Failed to save food entry. Please try again.');
+      Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} food entry. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -79,9 +101,9 @@ export default function ManualFoodEntryScreen() {
         <Ionicons 
           name="restaurant" 
           size={24} 
-          color={theme.colors.primary} 
+          color={theme.colors.textSecondary} 
         />
-        <Text style={styles.title}>Add Food Entry</Text>
+        <Text style={styles.title}>{isEditMode ? 'Edit Food Entry' : 'Add Food Entry'}</Text>
       </View>
 
       <Card style={styles.card}>
@@ -301,11 +323,46 @@ export default function ManualFoodEntryScreen() {
           disabled={isLoading}
           textColor={theme.colors.background}
         >
-          Save Entry
+{isEditMode ? 'Update Entry' : 'Save Entry'}
         </Button>
       </View>
 
       <View style={styles.bottomSpacing} />
+
+      {/* Custom Success Dialog */}
+      <Portal>
+        <Dialog 
+          visible={showSuccessDialog} 
+          onDismiss={() => {
+            setShowSuccessDialog(false);
+            router.back();
+          }}
+          style={styles.successDialog}
+        >
+          <Dialog.Content style={styles.successDialogContent}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={48} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.successTitle}>Success</Text>
+            <Text style={styles.successMessage}>
+              {successMessage}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions style={styles.successDialogActions}>
+            <Button
+              mode="contained"
+              onPress={() => {
+                setShowSuccessDialog(false);
+                router.back();
+              }}
+              style={styles.successButton}
+              textColor={theme.colors.background}
+            >
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScrollView>
   );
 }
@@ -373,6 +430,38 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   bottomSpacing: {
-    height: theme.spacing.xl,
+    height: 120,
+  },
+  successDialog: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+  },
+  successDialogContent: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  successIconContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  successMessage: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  successDialogActions: {
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
+  successButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
   },
 });

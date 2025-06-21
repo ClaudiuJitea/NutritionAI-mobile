@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Alert, Image } from 'react-native';
-import { Text, Button, Card, TextInput, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { Text, Button, Card, TextInput, SegmentedButtons, ActivityIndicator, Portal, Dialog } from 'react-native-paper';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
+import { Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -32,6 +33,7 @@ export default function FoodAnalysisScreen() {
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('serving');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   useEffect(() => {
     loadApiKey();
@@ -40,16 +42,18 @@ export default function FoodAnalysisScreen() {
   const loadApiKey = async () => {
     try {
       const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
+      
       if (apiKey) {
         openRouterService.setApiKey(apiKey);
       }
     } catch (error) {
-      console.error('Error loading API key:', error);
+      console.error('Error loading API configuration:', error);
     }
   };
 
   const checkApiKey = async (): Promise<boolean> => {
     const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
+    console.log('API Key check:', apiKey ? 'Found' : 'Not found');
     if (!apiKey) {
       Alert.alert(
         'API Key Required',
@@ -70,14 +74,32 @@ export default function FoodAnalysisScreen() {
     if (!(await checkApiKey())) return;
 
     try {
+      console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
         base64: true,
+        skipProcessing: false, // Allow Expo to process the image
+      });
+      
+      console.log('Camera photo result:', {
+        uri: photo?.uri,
+        hasBase64: !!photo?.base64,
+        base64Length: photo?.base64?.length || 0
       });
       
       if (photo?.base64) {
+        // Validate base64 data
+        if (photo.base64.length < 1000) {
+          console.error('Base64 data seems too small:', photo.base64.length);
+          Alert.alert('Error', 'Image capture failed. Please try again.');
+          return;
+        }
+        
         setCapturedImage(photo.uri);
         await analyzeFood(photo.base64);
+      } else {
+        console.error('No base64 data from camera');
+        Alert.alert('Error', 'Failed to capture image data. Please try again.');
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -86,20 +108,66 @@ export default function FoodAnalysisScreen() {
   };
 
   const pickImage = async () => {
-    if (!(await checkApiKey())) return;
-
+    console.log('pickImage function called');
     try {
+      // Check current media library permissions first
+      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      // If not granted, request permission
+      if (existingStatus !== 'granted') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your photo library to analyze existing photos. Please enable photo library access in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                // Open device settings for this app
+                Linking.openSettings();
+              }
+            },
+          ]
+        );
+        return;
+      }
+
+      console.log('Launching image library...');
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        allowsMultipleSelection: false,
         quality: 0.8,
         base64: true,
+        exif: false,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.AUTOMATIC,
       });
 
-      if (!result.canceled && result.assets[0].base64) {
-        setCapturedImage(result.assets[0].uri);
-        await analyzeFood(result.assets[0].base64);
+      console.log('Image picker result:', result);
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        console.log('Selected image asset:', { uri: asset.uri, hasBase64: !!asset.base64 });
+        
+        // Check API key only after user has selected an image
+        if (!(await checkApiKey())) return;
+        
+        if (asset.base64) {
+          console.log('Setting captured image and starting analysis...');
+          setCapturedImage(asset.uri);
+          await analyzeFood(asset.base64);
+        } else {
+          console.log('No base64 data available');
+          Alert.alert('Error', 'Failed to process image. Please try again.');
+        }
+      } else {
+        console.log('Image selection was canceled or failed');
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -108,20 +176,85 @@ export default function FoodAnalysisScreen() {
   };
 
   const analyzeFood = async (base64Image: string) => {
+    console.log('Starting food analysis...');
+    console.log('Base64 image length:', base64Image.length);
+    console.log('Base64 image starts with:', base64Image.substring(0, 50));
+    
     setStep('analyzing');
     setIsLoading(true);
 
     try {
+      // Validate base64 input
+      if (!base64Image || base64Image.length < 1000) {
+        throw new Error('Invalid image data. Please try taking another photo.');
+      }
+
+      // Test network connectivity first
+      console.log('Testing network connectivity...');
+      const testConnection = await openRouterService.testConnection();
+      console.log('Network test result:', testConnection);
+      
+      if (!testConnection) {
+        throw new Error('Unable to connect to OpenRouter API. Please check your internet connection and API key.');
+      }
+
+      console.log('Calling OpenRouter service...');
       const result = await openRouterService.analyzeFood(base64Image);
+      console.log('Analysis result:', result);
       setAnalysisResult(result);
-      setQuantity(result.estimated_serving.split(' ')[0] || '1');
-      setUnit(result.estimated_serving.split(' ').slice(1).join(' ') || 'serving');
+      
+      // Parse the estimated_serving to extract quantity and unit
+      const serving = result.estimated_serving.toLowerCase().trim();
+      
+      if (serving.includes('x serving')) {
+        // Format: "1x serving", "2x serving", etc.
+        const match = serving.match(/(\d+)x\s*serving/);
+        if (match) {
+          setQuantity(match[1] + 'x');
+          setUnit('serving');
+        } else {
+          setQuantity('1x');
+          setUnit('serving');
+        }
+      } else if (serving.includes('grams') || serving.includes('gram')) {
+        // Format: "150 grams", "200 gram", etc.
+        const match = serving.match(/(\d+)\s*grams?/);
+        if (match) {
+          setQuantity(match[1]);
+          setUnit('grams');
+        } else {
+          setQuantity('100');
+          setUnit('grams');
+        }
+      } else {
+        // Fallback - try to extract any number and assume serving
+        const match = serving.match(/(\d+)/);
+        if (match) {
+          setQuantity(match[1] + 'x');
+          setUnit('serving');
+        } else {
+          setQuantity('1x');
+          setUnit('serving');
+        }
+      }
+      
       setStep('review');
     } catch (error) {
       console.error('Error analyzing food:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      let errorMessage = 'Failed to analyze food. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       Alert.alert(
         'Analysis Failed',
-        error instanceof Error ? error.message : 'Failed to analyze food. Please try again.',
+        errorMessage,
         [
           { text: 'Retry', onPress: () => setStep('camera') },
           { text: 'Cancel', onPress: () => router.back() },
@@ -139,8 +272,38 @@ export default function FoodAnalysisScreen() {
     setIsLoading(true);
 
     try {
-      const quantityNum = parseFloat(quantity) || 1;
-      const multiplier = quantityNum;
+      // Parse quantity and determine multiplier
+      let quantityNum = 1;
+      let multiplier = 1;
+      
+      if (unit === 'serving') {
+        // For servings, parse the "2x" format and use as multiplier
+        if (quantity.includes('x')) {
+          const match = quantity.match(/(\d+)x/);
+          quantityNum = match ? parseFloat(match[1]) : 1;
+          multiplier = quantityNum; // Multiply nutrition values for multiple servings
+        } else {
+          quantityNum = parseFloat(quantity) || 1;
+          multiplier = quantityNum;
+        }
+      } else {
+        // For grams, the AI already calculated nutrition for the specific amount
+        // So we don't multiply - just store the quantity as-is
+        quantityNum = parseFloat(quantity) || 1;
+        multiplier = 1; // Don't multiply nutrition values for grams
+      }
+
+      console.log('Saving food entry to database...', {
+        food_description: analysisResult.food_description,
+        quantity: quantityNum,
+        unit: unit,
+        meal_type: selectedMeal,
+        food_category: analysisResult.food_category,
+        calories: analysisResult.calories * multiplier,
+        protein: analysisResult.protein * multiplier,
+        carbs: analysisResult.carbs * multiplier,
+        fat: analysisResult.fat * multiplier,
+      });
 
       await dbService.addFoodEntry({
         user_id: 1,
@@ -148,7 +311,7 @@ export default function FoodAnalysisScreen() {
         quantity: quantityNum,
         unit: unit,
         meal_type: selectedMeal,
-        food_category: 'AI Analyzed',
+        food_category: analysisResult.food_category,
         calories: analysisResult.calories * multiplier,
         protein: analysisResult.protein * multiplier,
         carbs: analysisResult.carbs * multiplier,
@@ -156,13 +319,12 @@ export default function FoodAnalysisScreen() {
         logged_date: format(new Date(), 'yyyy-MM-dd'),
       });
 
-      Alert.alert(
-        'Success!',
-        'Food entry has been saved to your log.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      console.log('Food entry saved successfully');
+      setStep('review'); // Reset to review step
+      setShowSuccessDialog(true);
     } catch (error) {
       console.error('Error saving food entry:', error);
+      setStep('review'); // Reset to review step on error
       Alert.alert('Error', 'Failed to save food entry. Please try again.');
     } finally {
       setIsLoading(false);
@@ -198,6 +360,7 @@ export default function FoodAnalysisScreen() {
 
   if (step === 'camera') {
     return (
+      <>
       <View style={styles.container}>
         <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
           <View style={styles.cameraOverlay}>
@@ -235,7 +398,7 @@ export default function FoodAnalysisScreen() {
                 style={styles.galleryButton}
                 textColor={theme.colors.text}
               >
-                Gallery
+                  Photos
               </Button>
               
               <Button
@@ -254,6 +417,42 @@ export default function FoodAnalysisScreen() {
           </View>
         </CameraView>
       </View>
+        
+        {/* Success Dialog */}
+        <Portal>
+          <Dialog 
+            visible={showSuccessDialog} 
+            onDismiss={() => {
+              setShowSuccessDialog(false);
+              router.back();
+            }}
+            style={styles.successDialog}
+          >
+            <Dialog.Content style={styles.successDialogContent}>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Success!</Text>
+              <Text style={styles.successMessage}>
+                Food entry has been saved to your log.
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions style={styles.successDialogActions}>
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setShowSuccessDialog(false);
+                  router.back();
+                }}
+                style={styles.successButton}
+                textColor={theme.colors.background}
+              >
+                OK
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      </>
     );
   }
 
@@ -270,9 +469,27 @@ export default function FoodAnalysisScreen() {
     );
   }
 
+  if (step === 'saving') {
+    return (
+      <View style={styles.loadingContainer}>
+        {capturedImage && (
+          <Image source={{ uri: capturedImage }} style={styles.previewImage} />
+        )}
+        <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
+        <Text style={styles.loadingText}>Saving to your food log...</Text>
+        <Text style={styles.loadingSubtext}>This will only take a moment</Text>
+      </View>
+    );
+  }
+
   if (step === 'review' && analysisResult) {
     return (
-      <View style={styles.reviewContainer}>
+      <>
+        <ScrollView 
+          style={styles.reviewContainer}
+          contentContainerStyle={styles.reviewContent}
+          showsVerticalScrollIndicator={false}
+        >
         {capturedImage && (
           <Image source={{ uri: capturedImage }} style={styles.reviewImage} />
         )}
@@ -325,10 +542,24 @@ export default function FoodAnalysisScreen() {
               <TextInput
                 label="Quantity"
                 value={quantity}
-                onChangeText={setQuantity}
+                onChangeText={(text) => {
+                  // Allow only numbers and 'x' character for serving format
+                  if (unit === 'serving') {
+                    // For servings, allow format like "1x", "2x", etc.
+                    const cleaned = text.replace(/[^0-9x]/g, '');
+                    if (cleaned.match(/^\d*x?$/)) {
+                      setQuantity(cleaned);
+                    }
+                  } else {
+                    // For grams, allow only numbers
+                    const cleaned = text.replace(/[^0-9]/g, '');
+                    setQuantity(cleaned);
+                  }
+                }}
                 keyboardType="numeric"
                 style={styles.quantityInput}
                 mode="outlined"
+                placeholder={unit === 'serving' ? 'e.g., 1x, 2x' : 'e.g., 150, 200'}
                 textColor={theme.colors.text}
                 placeholderTextColor={theme.colors.textSecondary}
                 outlineColor={theme.colors.border}
@@ -344,9 +575,17 @@ export default function FoodAnalysisScreen() {
               <TextInput
                 label="Unit"
                 value={unit}
-                onChangeText={setUnit}
+                onChangeText={(text) => {
+                  // Only allow "serving" or "grams"
+                  const lowercaseText = text.toLowerCase();
+                  if (lowercaseText === 'serving' || lowercaseText === 'grams' || 
+                      'serving'.startsWith(lowercaseText) || 'grams'.startsWith(lowercaseText)) {
+                    setUnit(text);
+                  }
+                }}
                 style={styles.unitInput}
                 mode="outlined"
+                placeholder="serving or grams"
                 textColor={theme.colors.text}
                 placeholderTextColor={theme.colors.textSecondary}
                 outlineColor={theme.colors.border}
@@ -397,7 +636,46 @@ export default function FoodAnalysisScreen() {
             Save Entry
           </Button>
         </View>
-      </View>
+        
+        {/* Bottom spacer to ensure content is not hidden behind navigation */}
+        <View style={styles.bottomSpacer} />
+        </ScrollView>
+        
+        {/* Success Dialog */}
+        <Portal>
+          <Dialog 
+            visible={showSuccessDialog} 
+            onDismiss={() => {
+              setShowSuccessDialog(false);
+              router.back();
+            }}
+            style={styles.successDialog}
+          >
+            <Dialog.Content style={styles.successDialogContent}>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Success!</Text>
+              <Text style={styles.successMessage}>
+                Food entry has been saved to your log.
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions style={styles.successDialogActions}>
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setShowSuccessDialog(false);
+                  router.back();
+                }}
+                style={styles.successButton}
+                textColor={theme.colors.background}
+              >
+                OK
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      </>
     );
   }
 
@@ -474,7 +752,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: theme.spacing.lg,
-    paddingBottom: 40,
+    paddingBottom: 120, // Increased to clear floating navigation
   },
   galleryButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -518,7 +796,10 @@ const styles = StyleSheet.create({
   reviewContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  reviewContent: {
     padding: theme.spacing.lg,
+    paddingBottom: 140, // Extra space for floating navigation
   },
   reviewImage: {
     width: '100%',
@@ -614,5 +895,43 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 2,
     backgroundColor: theme.colors.primary,
+  },
+  bottomSpacer: {
+    height: 20, // Additional bottom spacing
+  },
+  // Success Dialog Styles
+  successDialog: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    margin: theme.spacing.lg,
+  },
+  successDialogContent: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  successIconContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  successDialogActions: {
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
+  successButton: {
+    backgroundColor: theme.colors.primary,
+    minWidth: 120,
   },
 });

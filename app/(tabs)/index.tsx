@@ -1,17 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, ProgressBar } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import * as SecureStore from 'expo-secure-store';
 import { DatabaseService } from '../../src/services/database';
+import { OpenRouterService } from '../../src/services/openrouter';
 import { DailyNutrition, User } from '../../src/types/database';
 import { theme } from '../../src/constants/theme';
+
+// Embedded nutrition tips that will be shown when no API key is available
+const NUTRITION_TIPS = [
+  "Drink a glass of water before each meal to aid digestion and control appetite.",
+  "Fill half your plate with vegetables and fruits for optimal nutrition.",
+  "Choose whole fruits over fruit juices to get more fiber and less sugar.",
+  "Include a source of protein in every meal to maintain muscle mass.",
+  "Opt for whole grains instead of refined grains for better nutrients.",
+  "Include healthy fats like avocados, nuts, and olive oil in your diet.",
+  "Eat regular meals and snacks to maintain stable blood sugar levels.",
+  "Limit processed foods which are often high in sodium and preservatives.",
+  "Practice mindful eating by eating slowly and paying attention to hunger cues.",
+  "Eat a variety of colorful foods to ensure you get diverse nutrients."
+];
 
 export default function DashboardScreen() {
   const db = useSQLiteContext();
   const [dbService] = useState(() => new DatabaseService(db));
+  const [openRouterService] = useState(() => new OpenRouterService());
   const [dailyNutrition, setDailyNutrition] = useState<DailyNutrition>({
     calories: 0,
     protein: 0,
@@ -22,6 +39,8 @@ export default function DashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [consistencyDays, setConsistencyDays] = useState(0);
+  const [currentTip, setCurrentTip] = useState(NUTRITION_TIPS[0]);
+  const [isLoadingTip, setIsLoadingTip] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -52,10 +71,68 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     loadData();
+    loadSavedModelAndTip();
   }, []);
+
+  const loadSavedModelAndTip = async () => {
+    try {
+      // Load API key and set nutrition tip
+      const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
+      
+      if (apiKey) {
+        openRouterService.setApiKey(apiKey);
+      }
+      
+      // Then load nutrition tip
+      await loadNutritionTip();
+    } catch (error) {
+      console.error('Error loading API configuration in dashboard:', error);
+      // Fallback to loading tip anyway
+      await loadNutritionTip();
+    }
+  };
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const calorieProgress = user ? dailyNutrition.calories / user.calorie_goal : 0;
   const waterProgress = user ? dailyNutrition.water / user.water_goal : 0;
+
+  const loadNutritionTip = async () => {
+    try {
+      const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
+      if (apiKey) {
+        setIsLoadingTip(true);
+        openRouterService.setApiKey(apiKey);
+        
+        // Try to generate AI nutrition tip
+        try {
+          const aiTip = await openRouterService.generateNutritionTip();
+          setCurrentTip(aiTip);
+        } catch (aiError) {
+          console.error('Failed to generate AI tip:', aiError);
+          // Fall back to curated tip if AI fails
+          const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
+          setCurrentTip(randomTip);
+        }
+      } else {
+        // Use curated tips when no API key
+        setIsLoadingTip(true);
+        const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
+        setCurrentTip(randomTip);
+      }
+    } catch (error) {
+      console.error('Error loading nutrition tip:', error);
+      const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
+      setCurrentTip(randomTip);
+    } finally {
+      setIsLoadingTip(false);
+    }
+  };
 
   const MacroCard = ({ title, current, goal, unit, color }: {
     title: string;
@@ -84,6 +161,29 @@ export default function DashboardScreen() {
     </Card>
   );
 
+  const NutritionTipsCard = () => (
+    <Card style={styles.tipsCard}>
+      <Card.Content>
+        <View style={styles.tipsHeader}>
+          <Text style={styles.tipsTitle}>Nutrition Tip</Text>
+          <Button
+            mode="text"
+            onPress={loadNutritionTip}
+            loading={isLoadingTip}
+            disabled={isLoadingTip}
+            compact
+            textColor={theme.colors.primary}
+          >
+            New Tip
+          </Button>
+        </View>
+        <Text style={styles.tipText}>
+          {currentTip}
+        </Text>
+      </Card.Content>
+    </Card>
+  );
+
   return (
     <ScrollView 
       style={styles.container}
@@ -97,6 +197,8 @@ export default function DashboardScreen() {
           <View>
             <Text style={styles.welcomeText}>Good {getTimeOfDay()},</Text>
             <Text style={styles.nameText}>{user?.name || 'User'}!</Text>
+          </View>
+          <View style={styles.dateContainer}>
             <Text style={styles.dateText}>{format(new Date(), 'EEEE, MMMM d')}</Text>
           </View>
         </View>
@@ -106,7 +208,7 @@ export default function DashboardScreen() {
       <View style={styles.quickActions}>
         <Button
           mode="contained"
-          onPress={() => router.push('/food-analysis')}
+          onPress={() => router.push('/(tabs)/food-analysis')}
           style={styles.primaryButton}
           contentStyle={styles.buttonContent}
           icon={({ size, color }) => (
@@ -127,17 +229,28 @@ export default function DashboardScreen() {
       </View>
 
       {/* Calorie Progress */}
+      <TouchableOpacity 
+        onPress={() => router.push('/(tabs)/analytics')}
+        activeOpacity={0.7}
+      >
       <Card style={styles.progressCard}>
         <Card.Content>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Daily Calories</Text>
+              <View style={styles.progressValueContainer}>
             <Text style={styles.progressValue}>
               {Math.round(dailyNutrition.calories)} / {user?.calorie_goal || 2000}
             </Text>
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={16} 
+                  color={theme.colors.textSecondary} 
+                />
+              </View>
           </View>
           <ProgressBar
             progress={Math.min(calorieProgress, 1)}
-            color={theme.colors.primary}
+            color={calorieProgress > 1 ? theme.colors.error : theme.colors.primary}
             style={styles.progressBar}
           />
           <Text style={styles.progressPercent}>
@@ -145,19 +258,31 @@ export default function DashboardScreen() {
           </Text>
         </Card.Content>
       </Card>
+      </TouchableOpacity>
 
       {/* Water Progress */}
+      <TouchableOpacity 
+        onPress={() => router.push('/(tabs)/analytics?chart=water')}
+        activeOpacity={0.7}
+      >
       <Card style={styles.progressCard}>
         <Card.Content>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Water Intake</Text>
+              <View style={styles.progressValueContainer}>
             <Text style={styles.progressValue}>
               {Math.round(dailyNutrition.water)} / {user?.water_goal || 2500} ml
             </Text>
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={16} 
+                  color={theme.colors.textSecondary} 
+                />
+              </View>
           </View>
           <ProgressBar
             progress={Math.min(waterProgress, 1)}
-            color={theme.colors.chart.calories}
+            color={waterProgress > 1 ? theme.colors.error : theme.colors.chart.calories}
             style={styles.progressBar}
           />
           <Text style={styles.progressPercent}>
@@ -165,6 +290,7 @@ export default function DashboardScreen() {
           </Text>
         </Card.Content>
       </Card>
+      </TouchableOpacity>
 
       {/* Macronutrients */}
       <Text style={styles.sectionTitle}>Today's Macros</Text>
@@ -189,25 +315,10 @@ export default function DashboardScreen() {
         />
       </View>
 
-      {/* Consistency Tracker */}
-      <Card style={styles.consistencyCard}>
-        <Card.Content>
-          <View style={styles.consistencyHeader}>
-            <Ionicons 
-              name="flame" 
-              size={24} 
-              color={theme.colors.warning} 
-            />
-            <Text style={styles.consistencyTitle}>Weekly Streak</Text>
-          </View>
-          <Text style={styles.consistencyValue}>
-            {consistencyDays} / 7 days
-          </Text>
-          <Text style={styles.consistencySubtext}>
-            Keep logging to maintain your streak!
-          </Text>
-        </Card.Content>
-      </Card>
+      {/* Nutrition Tips */}
+      <NutritionTipsCard />
+      
+      <View style={styles.bottomSpacing} />
     </ScrollView>
   );
 }
@@ -243,10 +354,13 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginTop: 4,
   },
+  dateContainer: {
+    alignItems: 'flex-end',
+  },
   dateText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
-    marginTop: 4,
+    fontWeight: '400',
   },
   quickActions: {
     flexDirection: 'row',
@@ -284,6 +398,11 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+  },
+  progressValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   progressBar: {
     height: 8,
@@ -359,5 +478,31 @@ const styles = StyleSheet.create({
   consistencySubtext: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  tipsCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginLeft: theme.spacing.sm,
+    flex: 1,
+  },
+  tipText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  bottomSpacing: {
+    height: 120,
   },
 });

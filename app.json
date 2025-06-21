@@ -4,69 +4,39 @@
     "slug": "nutrition-ai-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.svg",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "nutritionai",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.svg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A1D29"
+      "backgroundColor": "#1a1a1a"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nutritionai.mobile"
+      "bundleIdentifier": "com.kuyos.nutritionaimobile"
     },
     "android": {
+      "package": "com.kuyos.nutritionaimobile",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.svg",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.nutritionai.mobile",
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A1D29"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-sqlite",
-        {
-          "enableFTS": true,
-          "useSQLCipher": false
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow NutritionAI to access your camera to analyze food photos."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow NutritionAI to access your photos to analyze food images."
-        }
-      ]
-    ],
-    "scheme": "nutrition-ai",
-    "experiments": {
-      "typedRoutes": true
+      "favicon": "./assets/icon.png"
     },
     "extra": {
-      "router": {
-        "origin": false
-      },
       "eas": {
         "projectId": "84c107db-b05c-4a43-9afb-bb9d3902632f"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

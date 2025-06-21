@@ -1,335 +1,304 @@
-# NutritionAI 🥗📱
+# NutritionAI Mobile 📱
 
-An AI-powered mobile application for tracking food intake and water consumption using computer vision and machine learning.
+A comprehensive React Native mobile application for tracking daily nutrition intake with AI-powered food analysis using image recognition. Built with Expo and TypeScript.
 
-## Features ✨
+<div align="center">
+  <img src="./assets/icon.png" alt="NutritionAI Logo" width="128" height="128">
+  
+  [![Expo](https://img.shields.io/badge/Expo-SDK%2052-000020.svg?style=flat&logo=expo)](https://expo.dev/)
+  [![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB.svg?style=flat&logo=react)](https://reactnative.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+</div>
 
-- **AI Food Analysis**: Take photos of your meals and get instant nutrition information
-- **Smart Tracking**: Automatic calorie, protein, carbs, and fat calculation
-- **Water Intake**: Track daily hydration with visual progress indicators
-- **Analytics Dashboard**: View trends, charts, and insights about your nutrition
-- **Goal Setting**: Customize daily calorie and water intake goals
-- **Offline Storage**: All data stored locally using SQLite
-- **Dark Theme**: Beautiful, modern UI optimized for mobile
+## ✨ Features
 
-## Screenshots 📸
+* 🍎 **Smart Food Tracking**: Log meals with detailed nutritional information
+* 📸 **AI Image Analysis**: Analyze food photos using OpenRouter AI (Google Gemini 2.5 Flash)
+* 💧 **Water Intake Tracking**: Monitor daily hydration goals with visual progress
+* 📊 **Analytics & Statistics**: Visualize nutrition trends with interactive charts
+* 🎯 **Goal Setting**: Set and track personalized nutrition and hydration goals
+* 👤 **User Profiles**: Manage personal information and health preferences
+* 📱 **Cross-Platform**: Works on both iOS and Android devices
+* 🔒 **Secure Storage**: API keys and sensitive data stored securely with Expo SecureStore
+* 🌙 **Modern UI**: Beautiful interface built with React Native Paper
+* 📈 **Progress Tracking**: Monitor daily, weekly, and monthly nutrition progress
 
-*Add screenshots of your app here*
+## 🛠 Technology Stack
 
-## Tech Stack 🛠️
+* **Framework**: React Native with Expo SDK 52
+* **Language**: TypeScript
+* **Navigation**: Expo Router (File-based routing)
+* **UI Components**: React Native Paper (Material Design 3)
+* **Charts**: React Native Chart Kit
+* **Database**: Expo SQLite (Local storage)
+* **Secure Storage**: Expo SecureStore
+* **AI Integration**: OpenRouter API with Google Gemini 2.5 Flash
+* **Image Processing**: Expo Image Picker & Camera
+* **Date Management**: date-fns
+* **HTTP Client**: Axios
 
-- **Framework**: React Native with Expo
-- **Navigation**: Expo Router
-- **Database**: SQLite with expo-sqlite
-- **AI Service**: OpenRouter API (Claude, GPT-4, Gemini)
-- **UI Components**: React Native Paper
-- **Charts**: React Native Chart Kit
-- **Camera**: Expo Camera & Image Picker
-- **Security**: Expo SecureStore for API keys
-- **Language**: TypeScript
+## 📋 Prerequisites
 
-## Prerequisites 📋
+* Node.js 18 or higher
+* npm or Yarn package manager
+* Expo CLI (`npm install -g @expo/cli`)
+* OpenRouter API key (for AI food analysis)
+* iOS Simulator (macOS) or Android Emulator
+* Expo Go app (for physical device testing)
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Expo CLI
-- OpenRouter API key (get one at [openrouter.ai](https://openrouter.ai))
-- iOS Simulator / Android Emulator or physical device
+## 🚀 Installation
 
-## Installation 🚀
+### 1. Clone the repository
+```bash
+git clone https://github.com/ClaudiuJitea/NutritionAI-mobile.git
+cd NutritionAI-mobile
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd NutritionAI
-   ```
+### 2. Install dependencies
+```bash
+# Using npm
+npm install
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+# Using yarn
+yarn install
+```
 
-3. **Start the development server**
-   ```bash
-   npx expo start
-   ```
+### 3. Set up environment variables
+```bash
+# Copy the example environment file
+cp .env.example .env
 
-4. **Run on device/simulator**
-   - Press `i` for iOS simulator
-   - Press `a` for Android emulator
-   - Scan QR code with Expo Go app on your device
+# Edit .env with your actual values
+# Get your OpenRouter API key from: https://openrouter.ai/
+```
 
-## Configuration ⚙️
+### 4. Start the development server
+```bash
+# Using npm
+npm start
+
+# Using yarn
+yarn start
+
+# Or start directly with Expo
+npx expo start
+```
+
+### 5. Run on device/simulator
+```bash
+# iOS Simulator (macOS only)
+npx expo run:ios
+
+# Android Emulator
+npx expo run:android
+
+# Or scan QR code with Expo Go app
+```
+
+## ⚙️ Configuration
 
 ### OpenRouter API Setup
 
-1. Visit [openrouter.ai](https://openrouter.ai) and create an account
-2. Generate an API key
-3. Open the app and go to Settings
-4. Enter your API key in the "AI Configuration" section
-5. Test the connection to ensure it's working
-6. Choose your preferred AI model (Claude 3.5 Sonnet recommended)
+1. Visit [OpenRouter.ai](https://openrouter.ai/)
+2. Create an account and get your API key
+3. The app will prompt you to enter your API key on first launch
+4. API keys are stored securely using Expo SecureStore
 
-### Supported AI Models
+### Environment Variables
 
-- **Anthropic Claude 3.5 Sonnet** (Recommended)
-- **Anthropic Claude 3 Haiku** (Faster, lower cost)
-- **OpenAI GPT-4o** (High quality)
-- **OpenAI GPT-4o Mini** (Cost-effective)
-- **Google Gemini Pro 1.5** (Good performance)
-- **Meta Llama 3.1 8B** (Open source)
+Create a `.env` file in the root directory:
 
-## Project Structure 📁
+```env
+# OpenRouter API Configuration
+OPENROUTER_API_KEY=your-openrouter-api-key-here
 
-```
-NutritionAI/
-├── app/                          # Expo Router pages
-│   ├── (tabs)/                   # Tab navigation
-│   │   ├── index.tsx            # Dashboard
-│   │   ├── food.tsx             # Food Log
-│   │   ├── water.tsx            # Water Tracking
-│   │   └── analytics.tsx        # Analytics
-│   ├── food-analysis.tsx        # AI Food Analysis
-│   ├── settings.tsx             # Settings
-│   └── _layout.tsx              # Root layout
-├── src/
-│   ├── components/              # Reusable components
-│   ├── constants/
-│   │   └── theme.ts            # App theme
-│   ├── services/
-│   │   ├── database.ts         # SQLite service
-│   │   └── openrouter.ts       # AI service
-│   └── types/
-│       ├── database.ts         # Database types
-│       └── api.ts              # API types
-├── app.json                     # Expo configuration
-├── package.json                 # Dependencies
-└── tsconfig.json               # TypeScript config
+# App Configuration
+EXPO_PROJECT_ID=your-expo-project-id-here
 ```
 
-## Usage Guide 📖
+## 📱 Usage
 
 ### Getting Started
 
-1. **Set up your profile**: Enter your name and daily goals in Settings
-2. **Configure AI**: Add your OpenRouter API key for food analysis
-3. **Start tracking**: Use the camera to analyze your meals
-4. **Monitor progress**: Check your dashboard for daily summaries
-5. **View analytics**: Explore trends and insights in the Analytics tab
+1. **Launch the App**: Open the app on your device or simulator
+2. **Complete Onboarding**: Set up your profile, goals, and API key
+3. **Start Tracking**: Begin logging food and water intake
+4. **View Analytics**: Monitor your progress in the Analytics tab
 
-### Food Analysis
+### Core Features
 
-1. Tap the camera button on the Dashboard or Food Log
-2. Take a photo of your meal or select from gallery
-3. Wait for AI analysis (usually 3-5 seconds)
-4. Review and adjust the detected nutrition information
-5. Select meal type (breakfast, lunch, dinner, snack)
-6. Save to your food log
+#### 🍽️ Food Tracking
+- **Manual Entry**: Add food items with custom nutritional information
+- **AI Photo Analysis**: Take photos of meals for automatic analysis
+- **Meal Categories**: Organize by breakfast, lunch, dinner, or snacks
+- **Food Categories**: Automatic categorization (vegetables, fruits, grains, protein, dairy)
 
-### Water Tracking
+#### 💧 Hydration Tracking
+- **Water Goals**: Set daily water intake targets
+- **Quick Logging**: Fast buttons for common serving sizes
+- **Progress Visualization**: Circular progress indicators
+- **Custom Amounts**: Add custom water amounts
 
-1. Go to the Water tab
-2. Use quick-add buttons (250ml, 500ml, 750ml, 1000ml)
-3. Or add custom amounts using the "+" button
-4. Track your progress toward daily goals
-5. View hydration tips and motivation
+#### 📊 Analytics & Statistics
+- **Daily Summaries**: Calorie and macro-nutrient breakdowns
+- **Progress Charts**: Line charts for trends over time
+- **Goal Achievement**: Visual indicators for daily goals
+- **Category Distribution**: Pie charts for food category analysis
 
-## Database Schema 🗄️
+#### ⚙️ Settings & Preferences
+- **Profile Management**: Update personal information
+- **Goal Customization**: Adjust nutrition and hydration targets
+- **API Key Management**: Update or remove OpenRouter API key
+- **Data Management**: Clear app data if needed
 
-### Tables
+## 🏗️ Project Structure
 
-- **users**: User profile and goals
-- **food_entries**: Logged meals with nutrition data
-- **water_intake**: Daily water consumption records
-- **settings**: App configuration and preferences
+```
+src/
+├── app/                     # Expo Router pages
+│   ├── (tabs)/             # Tab navigation screens
+│   │   ├── index.tsx       # Dashboard/Home
+│   │   ├── food.tsx        # Food log
+│   │   ├── food-analysis.tsx # AI food analysis
+│   │   ├── water.tsx       # Water tracking
+│   │   └── analytics.tsx   # Statistics
+│   ├── _layout.tsx         # Root layout
+│   ├── onboarding.tsx      # Initial setup
+│   ├── settings.tsx        # App settings
+│   └── manual-food-entry.tsx # Manual food entry
+├── src/
+│   ├── components/         # Reusable components
+│   ├── constants/          # App constants and themes
+│   ├── services/           # API services and database
+│   │   ├── database.ts     # SQLite database operations
+│   │   └── openrouter.ts   # OpenRouter AI service
+│   └── types/              # TypeScript type definitions
+│       ├── api.ts          # API response types
+│       └── database.ts     # Database schema types
+├── assets/                 # Static assets
+└── app.json               # Expo configuration
+```
 
-### Key Features
+## 🔧 Development
 
-- Automatic database initialization
-- Migration support for future updates
-- Efficient querying with proper indexing
-- Data validation and error handling
-
-## API Integration 🔌
-
-### OpenRouter Service
-
-The app uses OpenRouter as a unified API gateway to access multiple AI models:
-
-- **Endpoint**: `https://openrouter.ai/api/v1/chat/completions`
-- **Authentication**: Bearer token (API key)
-- **Models**: Multiple providers (Anthropic, OpenAI, Google, Meta)
-- **Rate Limiting**: Handled with exponential backoff
-- **Error Handling**: Comprehensive error messages and retry logic
-
-### Food Analysis Prompt
-
-The AI receives a detailed prompt to analyze food images:
-
-- Identify food items and portions
-- Estimate nutritional values
-- Provide confidence scores
-- Return structured JSON data
-- Handle edge cases (unclear images, non-food items)
-
-## Development 👨‍💻
-
-### Available Scripts
-
+### Running in Development
 ```bash
-# Start development server
+# Start the development server
 npm start
 
-# Start with cache cleared
-npm run start:clear
-
-# Run on iOS
+# Run on iOS simulator
 npm run ios
 
-# Run on Android
+# Run on Android emulator
 npm run android
 
-# Run on web
+# Run on web (for testing)
 npm run web
-
-# Type checking
-npm run type-check
-
-# Build for production
-npm run build
 ```
 
-### Code Style
-
-- TypeScript for type safety
-- ESLint for code quality
-- Prettier for formatting
-- Consistent naming conventions
-- Comprehensive error handling
-
-### Testing
-
+### Building for Production
 ```bash
-# Run tests
-npm test
+# Build development build
+npx expo build
 
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
+# For production deployment, configure EAS Build
+npx eas build --platform ios
+npx eas build --platform android
 ```
 
-## Troubleshooting 🔧
+### Database Schema
 
-### Common Issues
+The app uses SQLite with the following main tables:
+- **users**: User profiles and preferences
+- **food_entries**: Individual food log entries
+- **water_entries**: Water intake records
+- **nutrition_goals**: User-defined nutrition targets
 
-1. **Camera not working**
-   - Check camera permissions in device settings
-   - Restart the app
-   - Try using image picker instead
+## 🔒 Privacy & Security
 
-2. **AI analysis failing**
-   - Verify API key is correct
-   - Check internet connection
-   - Test API connection in Settings
-   - Try a different AI model
+* **Local Data Storage**: All personal data stored locally on device
+* **Secure API Keys**: OpenRouter API keys stored with Expo SecureStore
+* **No Data Collection**: No personal data sent to external servers (except OpenRouter for AI analysis)
+* **Offline Capable**: Core functionality works without internet connection
 
-3. **Database errors**
-   - Clear app data and restart
-   - Check device storage space
-   - Update to latest app version
-
-4. **Performance issues**
-   - Close other apps
-   - Restart device
-   - Clear app cache
-
-### Debug Mode
-
-Enable debug logging by setting `__DEV__` flag:
-
-```typescript
-if (__DEV__) {
-  console.log('Debug information');
-}
-```
-
-## Contributing 🤝
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ### Development Guidelines
 
-- Follow TypeScript best practices
-- Write comprehensive tests
-- Update documentation
-- Use semantic commit messages
-- Ensure cross-platform compatibility
+* Follow TypeScript best practices
+* Use React Native Paper components for consistency
+* Write meaningful commit messages
+* Test on both iOS and Android platforms
+* Ensure accessibility compliance
 
-## Deployment 🚀
+## 📦 Building & Deployment
 
-### Building for Production
+### Expo Application Services (EAS)
 
+1. **Install EAS CLI**
 ```bash
-# Build for iOS
-eas build --platform ios
-
-# Build for Android
-eas build --platform android
-
-# Build for both platforms
-eas build --platform all
+npm install -g eas-cli
 ```
 
-### App Store Submission
+2. **Configure EAS**
+```bash
+eas build:configure
+```
 
-1. Update version in `app.json`
-2. Build production version
-3. Test thoroughly on devices
-4. Submit to App Store/Play Store
-5. Monitor for issues
+3. **Build for App Stores**
+```bash
+# iOS App Store
+eas build --platform ios --profile production
 
-## Privacy & Security 🔒
+# Google Play Store
+eas build --platform android --profile production
+```
 
-- **Local Storage**: All nutrition data stored locally on device
-- **API Keys**: Securely stored using Expo SecureStore
-- **No Tracking**: No user analytics or tracking
-- **Permissions**: Only camera and storage permissions required
-- **Data Export**: Users can export their data anytime
+4. **Submit to Stores**
+```bash
+eas submit --platform ios
+eas submit --platform android
+```
 
-## Roadmap 🗺️
-
-### Planned Features
-
-- [ ] Barcode scanning for packaged foods
-- [ ] Recipe analysis and meal planning
-- [ ] Social features and sharing
-- [ ] Wearable device integration
-- [ ] Nutritionist consultation booking
-- [ ] Advanced analytics and insights
-- [ ] Multi-language support
-- [ ] Cloud sync and backup
-
-## License 📄
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support 💬
+## 🙏 Acknowledgments
 
-For support, email support@nutritionai.app or join our Discord community.
+* [OpenRouter.ai](https://openrouter.ai/) for AI-powered food analysis
+* [Google Gemini](https://deepmind.google/technologies/gemini/) for advanced image recognition
+* [Expo](https://expo.dev/) for the amazing development platform
+* [React Native Paper](https://callstack.github.io/react-native-paper/) for beautiful UI components
+* [React Native Chart Kit](https://github.com/indiespirit/react-native-chart-kit) for data visualization
 
-## Acknowledgments 🙏
+## 📞 Support
 
-- OpenRouter for AI API access
-- Expo team for the amazing framework
-- React Native Paper for UI components
-- All contributors and testers
+If you encounter any issues or have questions:
+
+1. Check the [Issues](https://github.com/ClaudiuJitea/NutritionAI-mobile/issues) page
+2. Create a new issue with detailed information
+3. Include screenshots and device information
+4. Specify steps to reproduce the problem
+
+## 🔄 Updates & Changelog
+
+### Version 1.0.0
+- Initial release
+- AI-powered food analysis
+- Water intake tracking
+- Comprehensive analytics
+- Cross-platform compatibility
 
 ---
 
 **Made with ❤️ for healthier living**
+
+> **Note**: This application requires an OpenRouter API key for AI features. The free tier provides sufficient usage for personal projects. For production use, consider the usage limits and pricing at [OpenRouter.ai](https://openrouter.ai/).

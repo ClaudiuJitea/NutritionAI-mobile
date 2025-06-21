@@ -4,7 +4,7 @@ import { OpenRouterConfig, NutritionAnalysisRequest, NutritionAnalysisResponse, 
 const DEFAULT_CONFIG: OpenRouterConfig = {
   apiKey: '', // Will be set from secure storage
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-3.5-sonnet',
+  model: 'google/gemini-2.5-flash', // Fixed stable model - use stable versions like google/gemini-2.8-flash or google/gemini-3.0-flash in future, avoid preview versions
   maxTokens: 1000
 };
 
@@ -13,7 +13,8 @@ Analyze this food image and provide detailed nutritional information. Return ONL
 
 {
   "food_description": "Detailed description of the food item(s)",
-  "estimated_serving": "Serving size estimate (e.g., '1 medium apple', '200g pasta')",
+  "estimated_serving": "Serving size estimate using specific format",
+  "food_category": "vegetables" | "fruits" | "grains" | "protein" | "dairy",
   "calories": number,
   "protein": number,
   "carbs": number,
@@ -23,10 +24,19 @@ Analyze this food image and provide detailed nutritional information. Return ONL
 
 Guidelines:
 - Be as accurate as possible with nutritional values
-- Use standard serving sizes when possible
-- Set confidence based on image clarity and food recognition certainty
 - All nutritional values should be in grams except calories
 - If multiple food items, provide totals for the entire meal
+- For estimated_serving, use this EXACT format:
+  * For individual items/portions: "1x serving" (e.g., "1x serving" for one apple, "2x serving" for two cookies)
+  * For bulk/loose foods: estimate weight in grams (e.g., "150 grams" for rice, "200 grams" for salad)
+- Set confidence based on image clarity and food recognition certainty
+- Categorize the food into ONE of these five groups:
+  * "vegetables": leafy greens, root vegetables, peppers, tomatoes, etc.
+  * "fruits": apples, bananas, berries, citrus, etc.
+  * "grains": bread, rice, pasta, cereals, oats, quinoa, etc.
+  * "protein": meat, fish, poultry, eggs, beans, nuts, tofu, etc.
+  * "dairy": milk, cheese, yogurt, butter, ice cream, etc.
+- If mixed dish, choose the category of the primary/dominant ingredient
 - Do not include any text outside the JSON object
 `;
 
@@ -50,6 +60,7 @@ export class OpenRouterService {
     }
 
     try {
+      console.log('Making API request to OpenRouter with model:', this.config.model);
       const response = await axios.post<OpenRouterResponse>(
         `${this.config.baseURL}/chat/completions`,
         {
@@ -84,31 +95,75 @@ export class OpenRouterService {
           timeout: 30000
         }
       );
+      console.log('API response received:', response.status, response.statusText);
+
+      console.log('Full API response data:', JSON.stringify(response.data, null, 2));
 
       const content = response.data.choices[0]?.message?.content;
+      console.log('Extracted content:', content);
+      
       if (!content) {
+        console.error('No content in response. Response structure:', response.data);
         throw new Error('No response content from OpenRouter');
       }
 
-      // Parse the JSON response
+      console.log('Raw AI response:', content);
+
+      // Parse the JSON response with better error handling
       try {
-        const nutritionData = JSON.parse(content.trim()) as NutritionAnalysisResponse;
+        // Clean the content - remove markdown code blocks, extra whitespace, etc.
+        let cleanContent = content.trim();
+        
+        // Remove markdown code blocks if present
+        cleanContent = cleanContent.replace(/```json\s*|\s*```/g, '');
+        cleanContent = cleanContent.replace(/```\s*|\s*```/g, '');
+        
+        // Find JSON object boundaries
+        const jsonStart = cleanContent.indexOf('{');
+        const jsonEnd = cleanContent.lastIndexOf('}');
+        
+        if (jsonStart === -1 || jsonEnd === -1) {
+          throw new Error('No valid JSON object found in response');
+        }
+        
+        const jsonString = cleanContent.substring(jsonStart, jsonEnd + 1);
+        console.log('Extracted JSON:', jsonString);
+        
+        const nutritionData = JSON.parse(jsonString) as NutritionAnalysisResponse;
         
         // Validate the response structure
         if (!this.isValidNutritionResponse(nutritionData)) {
+          console.error('Invalid response structure:', nutritionData);
           throw new Error('Invalid nutrition analysis response format');
         }
 
         return nutritionData;
       } catch (parseError) {
         console.error('Failed to parse nutrition analysis:', parseError);
-        throw new Error('Failed to parse AI response. Please try again.');
+        console.error('Raw content that failed to parse:', content);
+        
+        // Provide a more helpful error message
+        if (parseError instanceof SyntaxError) {
+          throw new Error('The AI returned an invalid response format. Please try again with a clearer image.');
+        } else {
+          throw new Error('Failed to parse AI response. Please try again.');
+        }
       }
 
     } catch (error) {
       console.error('OpenRouter API Error:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
       
       if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers
+        });
+        
         const status = error.response?.status;
         const message = error.response?.data?.error?.message || error.message;
         
@@ -124,6 +179,11 @@ export class OpenRouterService {
         }
       }
       
+      // If it's not an axios error, it might be a parsing error or other issue
+      if (error instanceof Error) {
+        throw error; // Re-throw the original error with its message
+      }
+      
       throw new Error('Network error. Please check your connection and try again.');
     }
   }
@@ -133,6 +193,8 @@ export class OpenRouterService {
       typeof data === 'object' &&
       typeof data.food_description === 'string' &&
       typeof data.estimated_serving === 'string' &&
+      typeof data.food_category === 'string' &&
+      ['vegetables', 'fruits', 'grains', 'protein', 'dairy'].includes(data.food_category) &&
       typeof data.calories === 'number' &&
       typeof data.protein === 'number' &&
       typeof data.carbs === 'number' &&
@@ -162,72 +224,42 @@ export class OpenRouterService {
     }
   }
 
-  async getAvailableModels(): Promise<string[]> {
+  getCurrentModel(): string {
+    return this.config.model;
+  }
+
+  async generateNutritionTip(): Promise<string> {
     if (!this.config.apiKey) {
-      // Return fallback models if no API key
-      return [
-        'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-haiku',
-        'openai/gpt-4o',
-        'openai/gpt-4o-mini',
-        'google/gemini-pro-1.5',
-        'meta-llama/llama-3.1-8b-instruct',
-      ];
+      throw new Error('OpenRouter API key not configured');
     }
 
     try {
-      const response = await fetch(
-        `${this.config.baseURL}/models`,
+      const response = await axios.post(
+        `${this.config.baseURL}/chat/completions`,
         {
-          method: 'GET',
+          model: this.config.model,
+          messages: [
+            {
+              role: 'user',
+              content: 'Generate a helpful nutrition tip in 1-2 sentences. Focus on practical advice for healthy eating.'
+            }
+          ],
+          max_tokens: 100,
+          temperature: 0.7
+        },
+        {
           headers: {
             'Authorization': `Bearer ${this.config.apiKey}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
           },
+          timeout: 15000
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Filter for popular/recommended models and sort by name
-      const popularModels = data.data
-        .filter((model: any) => {
-          const id = model.id.toLowerCase();
-          return (
-            id.includes('claude') ||
-            id.includes('gpt-4') ||
-            id.includes('gemini') ||
-            id.includes('llama-3')
-          );
-        })
-        .map((model: any) => model.id)
-        .sort();
-
-      return popularModels.length > 0 ? popularModels : [
-        'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-haiku',
-        'openai/gpt-4o',
-        'openai/gpt-4o-mini',
-      ];
+      return response.data.choices[0]?.message?.content || 'Stay hydrated and eat a variety of colorful fruits and vegetables!';
     } catch (error) {
-      console.error('Error fetching models from OpenRouter:', error);
-      // Return fallback models on error
-      return [
-        'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-haiku',
-        'openai/gpt-4o',
-        'openai/gpt-4o-mini',
-        'google/gemini-pro-1.5',
-        'meta-llama/llama-3.1-8b-instruct',
-      ];
+      console.error('Error generating nutrition tip:', error);
+      return 'Remember to balance your meals with proteins, healthy fats, and complex carbohydrates!';
     }
-  }
-
-  setModel(model: string): void {
-    this.config.model = model;
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { Text, Card, TextInput, Button, Switch, Divider } from 'react-native-paper';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { Text, Card, TextInput, Button, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -17,16 +17,22 @@ export default function SettingsScreen() {
   
   const [user, setUser] = useState<User | null>(null);
   const [apiKey, setApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState('anthropic/claude-3.5-sonnet');
   const [calorieGoal, setCalorieGoal] = useState('2000');
   const [waterGoal, setWaterGoal] = useState('2500');
   const [userName, setUserName] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(true);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  
+  // Dialog states
+  const [showApiKeySuccessDialog, setShowApiKeySuccessDialog] = useState(false);
+  const [showApiKeyErrorDialog, setShowApiKeyErrorDialog] = useState(false);
+  const [showConnectionSuccessDialog, setShowConnectionSuccessDialog] = useState(false);
+  const [showConnectionErrorDialog, setShowConnectionErrorDialog] = useState(false);
+  const [showSettingsSuccessDialog, setShowSettingsSuccessDialog] = useState(false);
+  const [showSettingsErrorDialog, setShowSettingsErrorDialog] = useState(false);
+  const [showResetConfirmDialog, setShowResetConfirmDialog] = useState(false);
+  const [showClearDataConfirmDialog, setShowClearDataConfirmDialog] = useState(false);
+  const [showApiKeyRequiredDialog, setShowApiKeyRequiredDialog] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -34,10 +40,9 @@ export default function SettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const [userData, storedApiKey, storedModel] = await Promise.all([
+      const [userData, storedApiKey] = await Promise.all([
         dbService.getUser(),
         SecureStore.getItemAsync('openrouter_api_key'),
-        dbService.getSetting('ai_model'),
       ]);
 
       if (userData) {
@@ -51,57 +56,30 @@ export default function SettingsScreen() {
         setApiKey(storedApiKey);
         openRouterService.setApiKey(storedApiKey);
       }
-
-      if (storedModel) {
-        setSelectedModel(storedModel);
-        openRouterService.setModel(storedModel);
-      }
-
-      // Load available models
-      await loadAvailableModels();
     } catch (error) {
       console.error('Error loading settings:', error);
     }
   };
 
-  const loadAvailableModels = async () => {
-    setIsLoadingModels(true);
-    try {
-      const models = await openRouterService.getAvailableModels();
-      setAvailableModels(models);
-    } catch (error) {
-      console.error('Error loading models:', error);
-      // Set fallback models
-      setAvailableModels([
-        'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-haiku',
-        'openai/gpt-4o',
-        'openai/gpt-4o-mini',
-      ]);
-    } finally {
-      setIsLoadingModels(false);
-    }
-  };
-
   const saveApiKey = async () => {
     if (!apiKey.trim()) {
-      Alert.alert('Error', 'Please enter a valid API key');
+      setShowApiKeyErrorDialog(true);
       return;
     }
 
     try {
       await SecureStore.setItemAsync('openrouter_api_key', apiKey.trim());
       openRouterService.setApiKey(apiKey.trim());
-      Alert.alert('Success', 'API key saved successfully');
+      setShowApiKeySuccessDialog(true);
     } catch (error) {
       console.error('Error saving API key:', error);
-      Alert.alert('Error', 'Failed to save API key');
+      setShowApiKeyErrorDialog(true);
     }
   };
 
   const testConnection = async () => {
     if (!apiKey.trim()) {
-      Alert.alert('Error', 'Please enter an API key first');
+      setShowApiKeyRequiredDialog(true);
       return;
     }
 
@@ -111,13 +89,13 @@ export default function SettingsScreen() {
       const isConnected = await openRouterService.testConnection();
       
       if (isConnected) {
-        Alert.alert('Success', 'Connection to OpenRouter API successful!');
+        setShowConnectionSuccessDialog(true);
       } else {
-        Alert.alert('Error', 'Failed to connect to OpenRouter API. Please check your API key.');
+        setShowConnectionErrorDialog(true);
       }
     } catch (error) {
       console.error('Error testing connection:', error);
-      Alert.alert('Error', 'Failed to test connection. Please try again.');
+      setShowConnectionErrorDialog(true);
     } finally {
       setIsTestingConnection(false);
     }
@@ -131,52 +109,67 @@ export default function SettingsScreen() {
 
       await Promise.all([
         dbService.updateUserGoals(calorieGoalNum, waterGoalNum),
-        dbService.setSetting('ai_model', selectedModel),
+        dbService.updateUserName(userName.trim() || 'User'),
       ]);
 
-      openRouterService.setModel(selectedModel);
+      console.log('Settings saved successfully');
       
-      Alert.alert('Success', 'Settings saved successfully');
-      await loadSettings(); // Reload to confirm changes
+      setShowSettingsSuccessDialog(true);
+      // Don't reload settings - just update the user state locally
+      const userData = await dbService.getUser();
+      if (userData) {
+        setUser(userData);
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      Alert.alert('Error', 'Failed to save settings');
+      setShowSettingsErrorDialog(true);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const resetOnboarding = async () => {
+    setShowResetConfirmDialog(true);
+  };
+
+  const handleResetConfirm = async () => {
+    try {
+      // Reset setup completion status
+      await db.runAsync(
+        'UPDATE users SET setup_completed = 0 WHERE id = 1'
+      );
+      
+      setShowResetConfirmDialog(false);
+      router.replace('/onboarding');
+    } catch (error) {
+      console.error('Error resetting onboarding:', error);
+      setShowResetConfirmDialog(false);
+      setShowSettingsErrorDialog(true);
+    }
+  };
+
   const clearAllData = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all your food logs, water intake, and settings. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await db.execAsync(`
-                DELETE FROM food_entries;
-                DELETE FROM water_intake;
-                DELETE FROM settings;
-                UPDATE users SET calorie_goal = 2000, water_goal = 2500 WHERE id = 1;
-              `);
-              
-              await SecureStore.deleteItemAsync('openrouter_api_key');
-              
-              Alert.alert('Success', 'All data has been cleared', [
-                { text: 'OK', onPress: () => router.replace('/(tabs)') }
-              ]);
-            } catch (error) {
-              console.error('Error clearing data:', error);
-              Alert.alert('Error', 'Failed to clear data');
-            }
-          },
-        },
-      ]
-    );
+    setShowClearDataConfirmDialog(true);
+  };
+
+  const handleClearDataConfirm = async () => {
+    try {
+      await db.execAsync(`
+        DELETE FROM food_entries;
+        DELETE FROM water_intake;
+        DELETE FROM settings;
+        UPDATE users SET calorie_goal = 2000, water_goal = 2500 WHERE id = 1;
+      `);
+      
+      await SecureStore.deleteItemAsync('openrouter_api_key');
+      
+      setShowClearDataConfirmDialog(false);
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      setShowClearDataConfirmDialog(false);
+      setShowSettingsErrorDialog(true);
+    }
   };
 
   const SettingCard = ({ title, children, icon }: {
@@ -187,7 +180,7 @@ export default function SettingsScreen() {
     <Card style={styles.settingCard}>
       <Card.Content>
         <View style={styles.settingHeader}>
-          <Ionicons name={icon as any} size={20} color={theme.colors.primary} />
+          <Ionicons name={icon as any} size={20} color={theme.colors.textSecondary} />
           <Text style={styles.settingTitle}>{title}</Text>
         </View>
         {children}
@@ -196,225 +189,326 @@ export default function SettingsScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>Configure your NutritionAI experience</Text>
-      </View>
-
-      {/* User Profile */}
-      <SettingCard title="Profile" icon="person">
-        <TextInput
-          label="Name"
-          value={userName}
-          onChangeText={setUserName}
-          mode="outlined"
-          style={styles.input}
-          textColor={theme.colors.text}
-          placeholderTextColor={theme.colors.textSecondary}
-          outlineColor={theme.colors.border}
-          activeOutlineColor={theme.colors.primary}
-          theme={{
-            colors: {
-              onSurfaceVariant: theme.colors.textSecondary,
-              outline: theme.colors.border,
-              primary: theme.colors.primary,
-            }
-          }}
-        />
-      </SettingCard>
-
-      {/* Daily Goals */}
-      <SettingCard title="Daily Goals" icon="trophy-outline">
-        <View style={styles.goalRow}>
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Section */}
+        <SettingCard title="Profile" icon="person-outline">
           <TextInput
-            label="Calorie Goal"
-            value={calorieGoal}
-            onChangeText={setCalorieGoal}
-            keyboardType="numeric"
+            label="Name"
+            value={userName}
+            onChangeText={setUserName}
             mode="outlined"
-            style={styles.goalInput}
+            style={styles.input}
             textColor={theme.colors.text}
             placeholderTextColor={theme.colors.textSecondary}
             outlineColor={theme.colors.border}
             activeOutlineColor={theme.colors.primary}
-            right={<TextInput.Affix text="cal" />}
             theme={{
               colors: {
                 onSurfaceVariant: theme.colors.textSecondary,
                 outline: theme.colors.border,
                 primary: theme.colors.primary,
-                onSurface: theme.colors.text,
               }
             }}
           />
+        </SettingCard>
+
+        {/* Daily Goals */}
+        <SettingCard title="Daily Goals" icon="trophy-outline">
+          <View style={styles.goalContainer}>
+            <View style={styles.goalItem}>
+              <Text style={styles.goalLabel}>Calorie Goal</Text>
+              <TextInput
+                value={calorieGoal}
+                onChangeText={setCalorieGoal}
+                mode="outlined"
+                keyboardType="numeric"
+                style={styles.goalInput}
+                right={<TextInput.Affix text="cal" />}
+                textColor={theme.colors.text}
+                placeholderTextColor={theme.colors.textSecondary}
+                outlineColor={theme.colors.border}
+                activeOutlineColor={theme.colors.primary}
+                theme={{
+                  colors: {
+                    onSurfaceVariant: theme.colors.textSecondary,
+                    outline: theme.colors.border,
+                    primary: theme.colors.primary,
+                  }
+                }}
+              />
+            </View>
+            
+            <View style={styles.goalItem}>
+              <Text style={styles.goalLabel}>Water Goal</Text>
+              <TextInput
+                value={waterGoal}
+                onChangeText={setWaterGoal}
+                mode="outlined"
+                keyboardType="numeric"
+                style={styles.goalInput}
+                right={<TextInput.Affix text="ml" />}
+                textColor={theme.colors.text}
+                placeholderTextColor={theme.colors.textSecondary}
+                outlineColor={theme.colors.border}
+                activeOutlineColor={theme.colors.primary}
+                theme={{
+                  colors: {
+                    onSurfaceVariant: theme.colors.textSecondary,
+                    outline: theme.colors.border,
+                    primary: theme.colors.primary,
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </SettingCard>
+
+        {/* AI Configuration */}
+        <SettingCard title="AI Configuration" icon="cog-outline">
+          <Text style={styles.sectionDescription}>
+            Configure your OpenRouter API key for food analysis
+          </Text>
+          
           <TextInput
-            label="Water Goal"
-            value={waterGoal}
-            onChangeText={setWaterGoal}
-            keyboardType="numeric"
+            label="OpenRouter API Key"
+            value={apiKey}
+            onChangeText={setApiKey}
+            secureTextEntry
             mode="outlined"
-            style={styles.goalInput}
+            style={styles.input}
+            placeholder="sk-or-v1-..."
             textColor={theme.colors.text}
             placeholderTextColor={theme.colors.textSecondary}
             outlineColor={theme.colors.border}
             activeOutlineColor={theme.colors.primary}
-            right={<TextInput.Affix text="ml" />}
+            right={
+              <TextInput.Icon 
+                icon="eye" 
+                onPress={() => {/* Toggle visibility */}} 
+              />
+            }
             theme={{
               colors: {
                 onSurfaceVariant: theme.colors.textSecondary,
                 outline: theme.colors.border,
                 primary: theme.colors.primary,
-                onSurface: theme.colors.text,
               }
             }}
           />
-        </View>
-      </SettingCard>
-
-      {/* AI Configuration */}
-      <SettingCard title="AI Configuration" icon="cog-outline">
-        <Text style={styles.sectionDescription}>
-          Configure your OpenRouter API key for food analysis
-        </Text>
-        
-        <TextInput
-          label="OpenRouter API Key"
-          value={apiKey}
-          onChangeText={setApiKey}
-          secureTextEntry
-          mode="outlined"
-          style={styles.input}
-          placeholder="sk-or-v1-..."
-          textColor={theme.colors.text}
-          placeholderTextColor={theme.colors.textSecondary}
-          outlineColor={theme.colors.border}
-          activeOutlineColor={theme.colors.primary}
-          right={
-            <TextInput.Icon 
-              icon="eye" 
-              onPress={() => {/* Toggle visibility */}} 
-            />
-          }
-          theme={{
-            colors: {
-              onSurfaceVariant: theme.colors.textSecondary,
-              outline: theme.colors.border,
-              primary: theme.colors.primary,
-            }
-          }}
-        />
-        
-        <View style={styles.apiActions}>
-          <Button
-            mode="outlined"
-            onPress={saveApiKey}
-            style={[styles.apiButton, { borderColor: theme.colors.primary }]}
-            disabled={!apiKey.trim()}
-            textColor={theme.colors.primary}
-            theme={{
-              colors: {
-                onSurfaceDisabled: theme.colors.primary,
-                outline: theme.colors.primary,
-              },
-            }}
-          >
-            Save Key
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={testConnection}
-            loading={isTestingConnection}
-            disabled={!apiKey.trim() || isTestingConnection}
-            style={[styles.apiButton, { borderColor: theme.colors.primary }]}
-            textColor={theme.colors.primary}
-            theme={{
-              colors: {
-                onSurfaceDisabled: theme.colors.primary,
-                outline: theme.colors.primary,
-              },
-            }}
-          >
-            Test Connection
-          </Button>
-        </View>
-        
-
-        
-        <Text style={styles.helpText}>
-          💡 Get your free API key at openrouter.ai
-        </Text>
-      </SettingCard>
-
-      {/* App Preferences */}
-      <SettingCard title="Preferences" icon="settings">
-        <View style={styles.preferenceRow}>
-          <View style={styles.preferenceInfo}>
-            <Text style={styles.preferenceTitle}>Notifications</Text>
-            <Text style={styles.preferenceSubtitle}>Reminders and updates</Text>
+          
+          <View style={styles.apiActions}>
+            <Button
+              mode="outlined"
+              onPress={saveApiKey}
+              style={[styles.apiButton, { borderColor: theme.colors.primary }]}
+              disabled={!apiKey.trim()}
+              textColor={theme.colors.primary}
+              theme={{
+                colors: {
+                  onSurfaceDisabled: theme.colors.primary,
+                  outline: theme.colors.primary,
+                },
+              }}
+            >
+              Save Key
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={testConnection}
+              loading={isTestingConnection}
+              disabled={!apiKey.trim() || isTestingConnection}
+              style={[styles.apiButton, { borderColor: theme.colors.primary }]}
+              textColor={theme.colors.primary}
+              theme={{
+                colors: {
+                  onSurfaceDisabled: theme.colors.primary,
+                  outline: theme.colors.primary,
+                },
+              }}
+            >
+              Test Connection
+            </Button>
           </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            color={theme.colors.primary}
-          />
-        </View>
-        
-        <Divider style={styles.divider} />
-        
-        <View style={styles.preferenceRow}>
-          <View style={styles.preferenceInfo}>
-            <Text style={styles.preferenceTitle}>Dark Mode</Text>
-            <Text style={styles.preferenceSubtitle}>Dark theme (always on)</Text>
-          </View>
-          <Switch
-            value={darkModeEnabled}
-            onValueChange={setDarkModeEnabled}
-            color={theme.colors.primary}
-            disabled
-          />
-        </View>
-      </SettingCard>
+          
+          {/* AI Model Info */}
+          <Text style={[styles.sectionDescription, { marginTop: theme.spacing.md }]}>
+            AI Model: Google Gemini 2.5 Flash
+          </Text>
+          
+          <Text style={styles.helpText}>
+            💡 Get your free API key at openrouter.ai
+          </Text>
+        </SettingCard>
 
-      {/* Save Settings */}
-      <View style={styles.saveContainer}>
         <Button
           mode="contained"
           onPress={saveUserSettings}
           loading={isSaving}
           disabled={isSaving}
           style={styles.saveButton}
-          contentStyle={styles.saveButtonContent}
-          textColor={theme.colors.background}
+          buttonColor={theme.colors.primary}
+          textColor="#FFFFFF"
         >
           Save Settings
         </Button>
-      </View>
 
-      {/* About */}
-      <SettingCard title="About" icon="information-circle">
-        <Text style={styles.aboutText}>NutritionAI v1.0.0</Text>
-        <Text style={styles.aboutText}>AI-powered nutrition tracking</Text>
-        <Text style={styles.aboutText}>Built with React Native & Expo</Text>
-      </SettingCard>
+        {/* Data Management */}
+        <SettingCard title="Data Management" icon="server-outline">
+          <Button
+            mode="outlined"
+            onPress={resetOnboarding}
+            style={[styles.actionButton, { borderColor: theme.colors.primary }]}
+            textColor={theme.colors.primary}
+            icon="refresh"
+          >
+            Reset Onboarding
+          </Button>
+          
+          <Button
+            mode="outlined"
+            onPress={clearAllData}
+            style={[styles.actionButton, { borderColor: theme.colors.error }]}
+            textColor={theme.colors.error}
+            icon="delete"
+          >
+            Clear All Data
+          </Button>
+        </SettingCard>
+        
+        {/* App Version */}
+        <Card style={[styles.settingCard, { marginBottom: theme.spacing.xl }]}>
+          <Card.Content>
+            <Text style={styles.versionText}>
+              NutritionAI v1.0.0
+            </Text>
+          </Card.Content>
+        </Card>
+      </ScrollView>
 
-      {/* Danger Zone */}
-      <SettingCard title="Danger Zone" icon="warning">
-        <Text style={styles.dangerDescription}>
-          Permanently delete all your data. This action cannot be undone.
-        </Text>
-        <Button
-          mode="outlined"
-          onPress={clearAllData}
-          textColor={theme.colors.error}
-          style={[styles.dangerButton, { borderColor: theme.colors.error }]}
-        >
-          Clear All Data
-        </Button>
-      </SettingCard>
+      {/* Success Dialogs */}
+      <Portal>
+        <Dialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)}>
+          <Dialog.Title>Success!</Dialog.Title>
+          <Dialog.Content>
+            <Text>API key saved successfully.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowApiKeySuccessDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-      <View style={styles.bottomSpacing} />
-    </ScrollView>
+        <Dialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)}>
+          <Dialog.Title>Connection Test</Dialog.Title>
+          <Dialog.Content>
+            <Text>✅ Successfully connected to OpenRouter API!</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowConnectionSuccessDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)}>
+          <Dialog.Title>Settings Saved</Dialog.Title>
+          <Dialog.Content>
+            <Text>Your settings have been updated successfully!</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowSettingsSuccessDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Error Dialogs */}
+        <Dialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)}>
+          <Dialog.Title>Error</Dialog.Title>
+          <Dialog.Content>
+            <Text>Please enter a valid API key.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowApiKeyErrorDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)}>
+          <Dialog.Title>Connection Failed</Dialog.Title>
+          <Dialog.Content>
+            <Text>❌ Could not connect to OpenRouter API. Please check your API key and internet connection.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowConnectionErrorDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)}>
+          <Dialog.Title>Error</Dialog.Title>
+          <Dialog.Content>
+            <Text>Failed to save settings. Please try again.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowSettingsErrorDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)}>
+          <Dialog.Title>API Key Required</Dialog.Title>
+          <Dialog.Content>
+            <Text>Please enter an API key first to test the connection.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowApiKeyRequiredDialog(false)} textColor={theme.colors.primary}>
+              OK
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Confirmation Dialogs */}
+        <Dialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)}>
+          <Dialog.Title>Reset Onboarding</Dialog.Title>
+          <Dialog.Content>
+            <Text>This will reset the onboarding process. You'll need to go through setup again. Continue?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowResetConfirmDialog(false)} textColor={theme.colors.textSecondary}>
+              Cancel
+            </Button>
+            <Button onPress={handleResetConfirm} textColor={theme.colors.primary}>
+              Reset
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)}>
+          <Dialog.Title>Clear All Data</Dialog.Title>
+          <Dialog.Content>
+            <Text>⚠️ This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowClearDataConfirmDialog(false)} textColor={theme.colors.textSecondary}>
+              Cancel
+            </Button>
+            <Button onPress={handleClearDataConfirm} textColor={theme.colors.error}>
+              Delete All
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </View>
   );
 }
 
@@ -423,22 +517,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginTop: 4,
   },
   settingCard: {
-    marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
   },
@@ -449,7 +534,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: theme.colors.text,
     marginLeft: theme.spacing.sm,
   },
@@ -461,73 +546,49 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: theme.spacing.md,
   },
-  goalRow: {
+  goalContainer: {
     flexDirection: 'row',
     gap: theme.spacing.md,
+  },
+  goalItem: {
+    flex: 1,
+  },
+  goalLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   goalInput: {
     flex: 1,
   },
   apiActions: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
   apiButton: {
     flex: 1,
   },
-  divider: {
-    marginVertical: theme.spacing.md,
-    backgroundColor: theme.colors.border,
-  },
-
   helpText: {
     fontSize: 12,
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
   },
-  preferenceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-  },
-  preferenceInfo: {
-    flex: 1,
-  },
-  preferenceTitle: {
-    fontSize: 16,
-    color: theme.colors.text,
-  },
-  preferenceSubtitle: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  saveContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-  },
   saveButton: {
-    backgroundColor: theme.colors.primary,
+    marginBottom: theme.spacing.lg,
+    paddingVertical: theme.spacing.xs,
   },
-  saveButtonContent: {
-    height: 48,
-  },
-  aboutText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: 4,
-  },
-  dangerDescription: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+  actionButton: {
     marginBottom: theme.spacing.md,
   },
-  dangerButton: {
-    alignSelf: 'flex-start',
+  versionText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
   },
-  bottomSpacing: {
-    height: theme.spacing.xl,
+  dialogButton: {
+    marginHorizontal: theme.spacing.xs,
   },
 });

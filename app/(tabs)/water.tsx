@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Alert, Modal } from 'react-native';
 import { Text, Card, Button, ProgressBar, IconButton, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -82,6 +83,13 @@ export default function WaterScreen() {
     loadData();
   }, [selectedDate]);
 
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [selectedDate])
+  );
+
   const waterGoal = user?.water_goal || 2500;
   const progress = Math.min(waterIntake / waterGoal, 1);
   const remainingWater = Math.max(waterGoal - waterIntake, 0);
@@ -89,6 +97,7 @@ export default function WaterScreen() {
   const glassesNeeded = Math.ceil(waterGoal / 250);
 
   const getProgressColor = () => {
+    if (waterIntake > waterGoal) return theme.colors.error;
     if (progress >= 1) return theme.colors.success;
     if (progress >= 0.7) return theme.colors.primary;
     if (progress >= 0.4) return theme.colors.warning;
@@ -96,11 +105,11 @@ export default function WaterScreen() {
   };
 
   const getMotivationalMessage = () => {
-    if (progress >= 1) return "🎉 Great job! You've reached your daily goal!";
-    if (progress >= 0.8) return "💪 Almost there! Keep it up!";
-    if (progress >= 0.5) return "👍 You're halfway to your goal!";
-    if (progress >= 0.2) return "🌊 Good start! Keep drinking!";
-    return "💧 Time to hydrate! Start your day right!";
+    if (progress >= 1) return "Great job! You've reached your daily goal!";
+    if (progress >= 0.8) return "Almost there! Keep it up!";
+    if (progress >= 0.5) return "You're halfway to your goal!";
+    if (progress >= 0.2) return "Good start! Keep drinking!";
+    return "Time to hydrate! Start your day right!";
   };
 
   const WaterGlass = ({ filled, index }: { filled: boolean; index: number }) => (
@@ -108,7 +117,7 @@ export default function WaterScreen() {
       <Ionicons
         name={filled ? 'water' : 'water-outline'}
         size={32}
-        color={filled ? theme.colors.primary : theme.colors.border}
+        color={filled ? theme.colors.text : theme.colors.border}
       />
     </View>
   );
@@ -269,7 +278,7 @@ export default function WaterScreen() {
       {/* Hydration Tips */}
       <Card style={styles.tipsCard}>
         <Card.Content>
-          <Text style={styles.tipsTitle}>💡 Hydration Tips</Text>
+          <Text style={styles.tipsTitle}>Hydration Tips</Text>
           <View style={styles.tipsList}>
             <Text style={styles.tipItem}>• Start your day with a glass of water</Text>
             <Text style={styles.tipItem}>• Drink water before, during, and after exercise</Text>
@@ -283,23 +292,50 @@ export default function WaterScreen() {
 
       {/* Add Water Dialog */}
       <Portal>
-        <Dialog visible={showAddDialog} onDismiss={() => setShowAddDialog(false)}>
-          <Dialog.Title>Add Water</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>Enter amount in ml:</Text>
+        <Dialog 
+          visible={showAddDialog} 
+          onDismiss={() => setShowAddDialog(false)}
+          style={styles.dialog}
+        >
+          <Dialog.Title style={styles.dialogTitle}>
+            <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.dialogTitleText}>Add Water</Text>
+          </Dialog.Title>
+          <Dialog.Content style={styles.dialogContent}>
+            <Text style={styles.dialogDescription}>Enter amount in ml:</Text>
             <TextInput
               mode="outlined"
               value={inputAmount}
               onChangeText={setInputAmount}
               keyboardType="numeric"
-              placeholder="Enter amount"
+              placeholder="Enter amount (e.g., 250)"
               placeholderTextColor={theme.colors.textSecondary}
               autoFocus
+              style={styles.dialogInput}
+              textColor={theme.colors.text}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.primary}
+              right={<TextInput.Affix text="ml" />}
+              theme={{
+                colors: {
+                  onSurfaceVariant: theme.colors.textSecondary,
+                  outline: theme.colors.border,
+                  primary: theme.colors.primary,
+                }
+              }}
             />
+            <Text style={styles.dialogHint}>Recommended: 250ml per glass</Text>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowAddDialog(false)}>Cancel</Button>
+          <Dialog.Actions style={styles.dialogActions}>
+            <Button 
+              onPress={() => setShowAddDialog(false)}
+              textColor={theme.colors.textSecondary}
+              style={styles.cancelButton}
+            >
+              Cancel
+            </Button>
             <Button
+              mode="contained"
               onPress={() => {
                 const amount = parseInt(inputAmount || '0');
                 if (amount > 0 && amount <= 2000) {
@@ -309,8 +345,10 @@ export default function WaterScreen() {
                   Alert.alert('Invalid Amount', 'Please enter a value between 1 and 2000 ml.');
                 }
               }}
+              style={styles.actionButton}
+              textColor={theme.colors.background}
             >
-              Add
+              Add Water
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -318,23 +356,50 @@ export default function WaterScreen() {
 
       {/* Remove Water Dialog */}
       <Portal>
-        <Dialog visible={showRemoveDialog} onDismiss={() => setShowRemoveDialog(false)}>
-          <Dialog.Title>Remove Water</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>Enter amount to remove (ml):</Text>
+        <Dialog 
+          visible={showRemoveDialog} 
+          onDismiss={() => setShowRemoveDialog(false)}
+          style={styles.dialog}
+        >
+          <Dialog.Title style={styles.dialogTitle}>
+            <Ionicons name="remove-circle-outline" size={20} color={theme.colors.error} />
+            <Text style={styles.dialogTitleText}>Remove Water</Text>
+          </Dialog.Title>
+          <Dialog.Content style={styles.dialogContent}>
+            <Text style={styles.dialogDescription}>Enter amount to remove (ml):</Text>
             <TextInput
               mode="outlined"
               value={inputAmount}
               onChangeText={setInputAmount}
               keyboardType="numeric"
-              placeholder="Enter amount"
+              placeholder="Enter amount to remove"
               placeholderTextColor={theme.colors.textSecondary}
               autoFocus
+              style={styles.dialogInput}
+              textColor={theme.colors.text}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.error}
+              right={<TextInput.Affix text="ml" />}
+              theme={{
+                colors: {
+                  onSurfaceVariant: theme.colors.textSecondary,
+                  outline: theme.colors.border,
+                  primary: theme.colors.error,
+                }
+              }}
             />
+            <Text style={styles.dialogHint}>Current intake: {waterIntake} ml</Text>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowRemoveDialog(false)}>Cancel</Button>
+          <Dialog.Actions style={styles.dialogActions}>
+            <Button 
+              onPress={() => setShowRemoveDialog(false)}
+              textColor={theme.colors.textSecondary}
+              style={styles.cancelButton}
+            >
+              Cancel
+            </Button>
             <Button
+              mode="contained"
               onPress={() => {
                 const amount = parseInt(inputAmount || '0');
                 if (amount > 0 && amount <= waterIntake) {
@@ -344,9 +409,10 @@ export default function WaterScreen() {
                   Alert.alert('Invalid Amount', `Please enter a value between 1 and ${waterIntake} ml.`);
                 }
               }}
-              textColor={theme.colors.error}
+              style={[styles.actionButton, { backgroundColor: theme.colors.error }]}
+              textColor={theme.colors.background}
             >
-              Remove
+              Remove Water
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -363,25 +429,38 @@ const styles = StyleSheet.create({
   dateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   dateInfo: {
     flex: 1,
     alignItems: 'center',
   },
   dateText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: theme.colors.text,
+    textAlign: 'center',
   },
   pastDateWarning: {
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.warning,
-    marginTop: 2,
+    marginTop: 4,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   progressCard: {
     margin: theme.spacing.lg,
@@ -424,7 +503,7 @@ const styles = StyleSheet.create({
   },
   motivationalText: {
     fontSize: 14,
-    color: theme.colors.primary,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
   },
@@ -500,7 +579,7 @@ const styles = StyleSheet.create({
   },
   tipsCard: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    marginBottom: 120,
     backgroundColor: theme.colors.surface,
   },
   tipsTitle: {
@@ -516,5 +595,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
     lineHeight: 20,
+  },
+  // Dialog styles
+  dialog: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    margin: theme.spacing.md,
+  },
+  dialogTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+  },
+  dialogTitleText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  dialogContent: {
+    paddingTop: 0,
+    paddingBottom: theme.spacing.sm,
+  },
+  dialogDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  dialogInput: {
+    marginBottom: theme.spacing.xs,
+  },
+  dialogHint: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  dialogActions: {
+    paddingTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  cancelButton: {
+    borderRadius: theme.borderRadius.sm,
+    minWidth: 80,
+  },
+  actionButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    minWidth: 100,
   },
 });
