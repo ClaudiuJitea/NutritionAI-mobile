@@ -8,11 +8,6 @@
     "userInterfaceStyle": "automatic",
     "scheme": "nutritionai",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a1a1a"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],

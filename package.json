@@ -14,7 +14,6 @@
     "date-fns": "^4.1.0",
     "expo": "~52.0.0",
     "expo-camera": "~16.0.0",
-    "expo-dev-client": "~5.0.20",
     "expo-font": "~13.0.4",
     "expo-image-picker": "~16.0.0",
     "expo-linking": "~7.0.5",

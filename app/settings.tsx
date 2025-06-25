@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text, Card, TextInput, Button, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -9,6 +9,130 @@ import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { User } from '../src/types/database';
 import { theme } from '../src/constants/theme';
+
+// Extract components outside to prevent re-creation
+const ProfileInput = ({ defaultName, onBlur }: { defaultName: string; onBlur: (value: string) => void }) => {
+  const inputRef = useRef<any>(null);
+  
+  return (
+    <TextInput
+      key={`profile-name-${defaultName}`}
+      ref={inputRef}
+      label="Name"
+      defaultValue={defaultName}
+      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      mode="outlined"
+      style={styles.input}
+      textColor={theme.colors.text}
+      placeholderTextColor={theme.colors.textSecondary}
+      outlineColor={theme.colors.border}
+      activeOutlineColor={theme.colors.primary}
+      theme={{
+        colors: {
+          onSurfaceVariant: theme.colors.textSecondary,
+          outline: theme.colors.border,
+          primary: theme.colors.primary,
+        }
+      }}
+    />
+  );
+};
+
+const CalorieGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBlur: (value: string) => void }) => {
+  const inputRef = useRef<any>(null);
+  
+  return (
+    <TextInput
+      key={`calorie-goal-${defaultValue}`}
+      ref={inputRef}
+      defaultValue={defaultValue}
+      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      mode="outlined"
+      keyboardType="numeric"
+      style={styles.goalInput}
+      right={<TextInput.Affix text="cal" />}
+      textColor={theme.colors.text}
+      placeholderTextColor={theme.colors.textSecondary}
+      outlineColor={theme.colors.border}
+      activeOutlineColor={theme.colors.primary}
+      theme={{
+        colors: {
+          onSurfaceVariant: theme.colors.textSecondary,
+          outline: theme.colors.border,
+          primary: theme.colors.primary,
+        }
+      }}
+    />
+  );
+};
+
+const WaterGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBlur: (value: string) => void }) => {
+  const inputRef = useRef<any>(null);
+  
+  return (
+    <TextInput
+      key={`water-goal-${defaultValue}`}
+      ref={inputRef}
+      defaultValue={defaultValue}
+      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      mode="outlined"
+      keyboardType="numeric"
+      style={styles.goalInput}
+      right={<TextInput.Affix text="ml" />}
+      textColor={theme.colors.text}
+      placeholderTextColor={theme.colors.textSecondary}
+      outlineColor={theme.colors.border}
+      activeOutlineColor={theme.colors.primary}
+      theme={{
+        colors: {
+          onSurfaceVariant: theme.colors.textSecondary,
+          outline: theme.colors.border,
+          primary: theme.colors.primary,
+        }
+      }}
+    />
+  );
+};
+
+const ApiKeyInput = ({ defaultValue, onBlur, showApiKey, onToggleVisibility }: { 
+  defaultValue: string; 
+  onBlur: (value: string) => void;
+  showApiKey: boolean;
+  onToggleVisibility: () => void;
+}) => {
+  const inputRef = useRef<any>(null);
+  
+  return (
+    <TextInput
+      key={`api-key-${defaultValue}`}
+      ref={inputRef}
+      label="OpenRouter API Key"
+      defaultValue={defaultValue}
+      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      secureTextEntry={!showApiKey}
+      mode="outlined"
+      style={styles.input}
+      placeholder="sk-or-v1-..."
+      textColor={theme.colors.text}
+      placeholderTextColor={theme.colors.textSecondary}
+      outlineColor={theme.colors.border}
+      activeOutlineColor={theme.colors.primary}
+      right={
+        <TextInput.Icon 
+          icon={showApiKey ? "eye-off" : "eye"} 
+          onPress={onToggleVisibility} 
+        />
+      }
+      theme={{
+        colors: {
+          onSurfaceVariant: theme.colors.textSecondary,
+          outline: theme.colors.border,
+          primary: theme.colors.primary,
+        }
+      }}
+    />
+  );
+};
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
@@ -22,6 +146,7 @@ export default function SettingsScreen() {
   const [userName, setUserName] = useState('');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   
   // Dialog states
   const [showApiKeySuccessDialog, setShowApiKeySuccessDialog] = useState(false);
@@ -197,23 +322,9 @@ export default function SettingsScreen() {
       >
         {/* Profile Section */}
         <SettingCard title="Profile" icon="person-outline">
-          <TextInput
-            label="Name"
-            value={userName}
-            onChangeText={setUserName}
-            mode="outlined"
-            style={styles.input}
-            textColor={theme.colors.text}
-            placeholderTextColor={theme.colors.textSecondary}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
-            theme={{
-              colors: {
-                onSurfaceVariant: theme.colors.textSecondary,
-                outline: theme.colors.border,
-                primary: theme.colors.primary,
-              }
-            }}
+          <ProfileInput
+            defaultName={userName}
+            onBlur={(value) => setUserName(value)}
           />
         </SettingCard>
 
@@ -222,47 +333,17 @@ export default function SettingsScreen() {
           <View style={styles.goalContainer}>
             <View style={styles.goalItem}>
               <Text style={styles.goalLabel}>Calorie Goal</Text>
-              <TextInput
-                value={calorieGoal}
-                onChangeText={setCalorieGoal}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.goalInput}
-                right={<TextInput.Affix text="cal" />}
-                textColor={theme.colors.text}
-                placeholderTextColor={theme.colors.textSecondary}
-                outlineColor={theme.colors.border}
-                activeOutlineColor={theme.colors.primary}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: theme.colors.textSecondary,
-                    outline: theme.colors.border,
-                    primary: theme.colors.primary,
-                  }
-                }}
+              <CalorieGoalInput
+                defaultValue={calorieGoal}
+                onBlur={(value) => setCalorieGoal(value)}
               />
             </View>
             
             <View style={styles.goalItem}>
               <Text style={styles.goalLabel}>Water Goal</Text>
-              <TextInput
-                value={waterGoal}
-                onChangeText={setWaterGoal}
-                mode="outlined"
-                keyboardType="numeric"
-                style={styles.goalInput}
-                right={<TextInput.Affix text="ml" />}
-                textColor={theme.colors.text}
-                placeholderTextColor={theme.colors.textSecondary}
-                outlineColor={theme.colors.border}
-                activeOutlineColor={theme.colors.primary}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: theme.colors.textSecondary,
-                    outline: theme.colors.border,
-                    primary: theme.colors.primary,
-                  }
-                }}
+              <WaterGoalInput
+                defaultValue={waterGoal}
+                onBlur={(value) => setWaterGoal(value)}
               />
             </View>
           </View>
@@ -274,31 +355,11 @@ export default function SettingsScreen() {
             Configure your OpenRouter API key for food analysis
           </Text>
           
-          <TextInput
-            label="OpenRouter API Key"
-            value={apiKey}
-            onChangeText={setApiKey}
-            secureTextEntry
-            mode="outlined"
-            style={styles.input}
-            placeholder="sk-or-v1-..."
-            textColor={theme.colors.text}
-            placeholderTextColor={theme.colors.textSecondary}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
-            right={
-              <TextInput.Icon 
-                icon="eye" 
-                onPress={() => {/* Toggle visibility */}} 
-              />
-            }
-            theme={{
-              colors: {
-                onSurfaceVariant: theme.colors.textSecondary,
-                outline: theme.colors.border,
-                primary: theme.colors.primary,
-              }
-            }}
+          <ApiKeyInput
+            defaultValue={apiKey}
+            onBlur={(value) => setApiKey(value)}
+            showApiKey={showApiKey}
+            onToggleVisibility={() => setShowApiKey(!showApiKey)}
           />
           
           <View style={styles.apiActions}>

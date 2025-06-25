@@ -4,6 +4,8 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 
 <div align="center">
   <img src="./assets/icon.png" alt="NutritionAI Logo" width="128" height="128">
+  
+  <p><em>✨ Recently updated with beautiful new app icons and enhanced user experience!</em></p>
 
   <!-- First row of 3 images -->
   <div style="display: flex; justify-content: center; gap: 10px; margin: 10px 0;">
@@ -35,9 +37,10 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 * 🎯 **Goal Setting**: Set and track personalized nutrition and hydration goals
 * 👤 **User Profiles**: Manage personal information and health preferences
 * 📱 **Cross-Platform**: Works on both iOS and Android devices
-* 🔒 **Secure Storage**: API keys and sensitive data stored securely with Expo SecureStore
+* 🔒 **Secure Storage**: API keys and sensitive data stored securely with Expo SecureStore  
 * 🌙 **Modern UI**: Beautiful interface built with React Native Paper
 * 📈 **Progress Tracking**: Monitor daily, weekly, and monthly nutrition progress
+* 🎨 **Professional Branding**: Custom-designed app icons optimized for all platforms
 
 ## 🛠 Technology Stack
 
@@ -304,6 +307,14 @@ If you encounter any issues or have questions:
 4. Specify steps to reproduce the problem
 
 ## 🔄 Updates & Changelog
+
+### Version 1.1.0 - Latest 🆕
+- ✨ **Brand New App Icons**: Beautiful, professionally designed icons for all platforms
+- 🎨 **Enhanced Visual Identity**: Updated app branding with modern iconography
+- 🚀 **Improved Performance**: Removed splash screen for faster app startup
+- 🔧 **Better UX**: Fixed TextInput focus issues in Settings page
+- 👁️ **Enhanced Security**: Added API key visibility toggle for better user control
+- 📱 **Store Ready**: Optimized icons for App Store and Google Play submissions
 
 ### Version 1.0.0
 - Initial release
