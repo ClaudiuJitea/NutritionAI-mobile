@@ -19,6 +19,8 @@
       "package": "com.kuyos.nutritionaimobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1A1D29"
       }
     },
