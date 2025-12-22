@@ -308,7 +308,12 @@ If you encounter any issues or have questions:
 
 ## 🔄 Updates & Changelog
 
-### Version 1.1.0 - Latest 🆕
+### Version 1.1.1 - Latest 🆕
+- 🐛 **Critical Bug Fix**: Fixed non-working buttons in Settings page (Save Key, Test Connection, Save Settings)
+- ⚡ **Improved Responsiveness**: Changed input components from uncontrolled to controlled for immediate state updates
+- 🔧 **Better UX**: Buttons now respond immediately as you type, no need to click away from inputs
+
+### Version 1.1.0
 - ✨ **Brand New App Icons**: Beautiful, professionally designed icons for all platforms
 - 🎨 **Enhanced Visual Identity**: Updated app branding with modern iconography
 - 🚀 **Improved Performance**: Removed splash screen for faster app startup

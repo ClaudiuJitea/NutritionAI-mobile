@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text, Card, TextInput, Button, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -11,16 +11,12 @@ import { User } from '../src/types/database';
 import { theme } from '../src/constants/theme';
 
 // Extract components outside to prevent re-creation
-const ProfileInput = ({ defaultName, onBlur }: { defaultName: string; onBlur: (value: string) => void }) => {
-  const inputRef = useRef<any>(null);
-  
+const ProfileInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
     <TextInput
-      key={`profile-name-${defaultName}`}
-      ref={inputRef}
       label="Name"
-      defaultValue={defaultName}
-      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      value={value}
+      onChangeText={onChangeText}
       mode="outlined"
       style={styles.input}
       textColor={theme.colors.text}
@@ -38,15 +34,11 @@ const ProfileInput = ({ defaultName, onBlur }: { defaultName: string; onBlur: (v
   );
 };
 
-const CalorieGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBlur: (value: string) => void }) => {
-  const inputRef = useRef<any>(null);
-  
+const CalorieGoalInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
     <TextInput
-      key={`calorie-goal-${defaultValue}`}
-      ref={inputRef}
-      defaultValue={defaultValue}
-      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      value={value}
+      onChangeText={onChangeText}
       mode="outlined"
       keyboardType="numeric"
       style={styles.goalInput}
@@ -66,15 +58,11 @@ const CalorieGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBl
   );
 };
 
-const WaterGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBlur: (value: string) => void }) => {
-  const inputRef = useRef<any>(null);
-  
+const WaterGoalInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
     <TextInput
-      key={`water-goal-${defaultValue}`}
-      ref={inputRef}
-      defaultValue={defaultValue}
-      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      value={value}
+      onChangeText={onChangeText}
       mode="outlined"
       keyboardType="numeric"
       style={styles.goalInput}
@@ -94,21 +82,17 @@ const WaterGoalInput = ({ defaultValue, onBlur }: { defaultValue: string; onBlur
   );
 };
 
-const ApiKeyInput = ({ defaultValue, onBlur, showApiKey, onToggleVisibility }: { 
-  defaultValue: string; 
-  onBlur: (value: string) => void;
+const ApiKeyInput = ({ value, onChangeText, showApiKey, onToggleVisibility }: {
+  value: string;
+  onChangeText: (value: string) => void;
   showApiKey: boolean;
   onToggleVisibility: () => void;
 }) => {
-  const inputRef = useRef<any>(null);
-  
   return (
     <TextInput
-      key={`api-key-${defaultValue}`}
-      ref={inputRef}
       label="OpenRouter API Key"
-      defaultValue={defaultValue}
-      onBlur={(e) => onBlur(e.nativeEvent.text)}
+      value={value}
+      onChangeText={onChangeText}
       secureTextEntry={!showApiKey}
       mode="outlined"
       style={styles.input}
@@ -118,9 +102,9 @@ const ApiKeyInput = ({ defaultValue, onBlur, showApiKey, onToggleVisibility }: {
       outlineColor={theme.colors.border}
       activeOutlineColor={theme.colors.primary}
       right={
-        <TextInput.Icon 
-          icon={showApiKey ? "eye-off" : "eye"} 
-          onPress={onToggleVisibility} 
+        <TextInput.Icon
+          icon={showApiKey ? "eye-off" : "eye"}
+          onPress={onToggleVisibility}
         />
       }
       theme={{
@@ -138,7 +122,7 @@ export default function SettingsScreen() {
   const db = useSQLiteContext();
   const [dbService] = useState(() => new DatabaseService(db));
   const [openRouterService] = useState(() => new OpenRouterService());
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [calorieGoal, setCalorieGoal] = useState('2000');
@@ -147,7 +131,7 @@ export default function SettingsScreen() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  
+
   // Dialog states
   const [showApiKeySuccessDialog, setShowApiKeySuccessDialog] = useState(false);
   const [showApiKeyErrorDialog, setShowApiKeyErrorDialog] = useState(false);
@@ -212,7 +196,7 @@ export default function SettingsScreen() {
     try {
       openRouterService.setApiKey(apiKey.trim());
       const isConnected = await openRouterService.testConnection();
-      
+
       if (isConnected) {
         setShowConnectionSuccessDialog(true);
       } else {
@@ -238,7 +222,7 @@ export default function SettingsScreen() {
       ]);
 
       console.log('Settings saved successfully');
-      
+
       setShowSettingsSuccessDialog(true);
       // Don't reload settings - just update the user state locally
       const userData = await dbService.getUser();
@@ -263,7 +247,7 @@ export default function SettingsScreen() {
       await db.runAsync(
         'UPDATE users SET setup_completed = 0 WHERE id = 1'
       );
-      
+
       setShowResetConfirmDialog(false);
       router.replace('/onboarding');
     } catch (error) {
@@ -285,9 +269,9 @@ export default function SettingsScreen() {
         DELETE FROM settings;
         UPDATE users SET calorie_goal = 2000, water_goal = 2500 WHERE id = 1;
       `);
-      
+
       await SecureStore.deleteItemAsync('openrouter_api_key');
-      
+
       setShowClearDataConfirmDialog(false);
       router.replace('/(tabs)');
     } catch (error) {
@@ -315,7 +299,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -323,8 +307,8 @@ export default function SettingsScreen() {
         {/* Profile Section */}
         <SettingCard title="Profile" icon="person-outline">
           <ProfileInput
-            defaultName={userName}
-            onBlur={(value) => setUserName(value)}
+            value={userName}
+            onChangeText={(value) => setUserName(value)}
           />
         </SettingCard>
 
@@ -334,16 +318,16 @@ export default function SettingsScreen() {
             <View style={styles.goalItem}>
               <Text style={styles.goalLabel}>Calorie Goal</Text>
               <CalorieGoalInput
-                defaultValue={calorieGoal}
-                onBlur={(value) => setCalorieGoal(value)}
+                value={calorieGoal}
+                onChangeText={(value) => setCalorieGoal(value)}
               />
             </View>
-            
+
             <View style={styles.goalItem}>
               <Text style={styles.goalLabel}>Water Goal</Text>
               <WaterGoalInput
-                defaultValue={waterGoal}
-                onBlur={(value) => setWaterGoal(value)}
+                value={waterGoal}
+                onChangeText={(value) => setWaterGoal(value)}
               />
             </View>
           </View>
@@ -354,14 +338,14 @@ export default function SettingsScreen() {
           <Text style={styles.sectionDescription}>
             Configure your OpenRouter API key for food analysis
           </Text>
-          
+
           <ApiKeyInput
-            defaultValue={apiKey}
-            onBlur={(value) => setApiKey(value)}
+            value={apiKey}
+            onChangeText={(value) => setApiKey(value)}
             showApiKey={showApiKey}
             onToggleVisibility={() => setShowApiKey(!showApiKey)}
           />
-          
+
           <View style={styles.apiActions}>
             <Button
               mode="outlined"
@@ -395,12 +379,12 @@ export default function SettingsScreen() {
               Test Connection
             </Button>
           </View>
-          
+
           {/* AI Model Info */}
           <Text style={[styles.sectionDescription, { marginTop: theme.spacing.md }]}>
             AI Model: Google Gemini 2.5 Flash
           </Text>
-          
+
           <Text style={styles.helpText}>
             💡 Get your free API key at openrouter.ai
           </Text>
@@ -429,7 +413,7 @@ export default function SettingsScreen() {
           >
             Reset Onboarding
           </Button>
-          
+
           <Button
             mode="outlined"
             onPress={clearAllData}
@@ -440,7 +424,7 @@ export default function SettingsScreen() {
             Clear All Data
           </Button>
         </SettingCard>
-        
+
         {/* App Version */}
         <Card style={[styles.settingCard, { marginBottom: theme.spacing.xl }]}>
           <Card.Content>
