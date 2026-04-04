@@ -34,8 +34,14 @@
     "@babel/core": "^7.25.0",
     "@tsconfig/react-native": "^3.0.6",
     "@types/react": "~19.2.10",
-    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-plugin-module-resolver": "^5.0.3",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "babel-plugin-istanbul": {
+      "test-exclude": "^8.0.0"
+    },
+    "chromium-edge-launcher": "0.3.0"
   },
   "private": true
 }
