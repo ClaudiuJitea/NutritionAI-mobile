@@ -21,9 +21,9 @@ A comprehensive React Native mobile application for tracking daily nutrition int
     <img src="https://github.com/user-attachments/assets/fb22ed6d-3eb3-485d-a7fe-e3a9a964744e" alt="IMG-20250621-WA0007" width="200">
   </div>
 
-  [![Expo](https://img.shields.io/badge/Expo-SDK%2052-000020.svg?style=flat&logo=expo)](https://expo.dev/)
-  [![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB.svg?style=flat&logo=react)](https://reactnative.dev/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+  [![Expo](https://img.shields.io/badge/Expo-SDK%2055-000020.svg?style=flat&logo=expo)](https://expo.dev/)
+  [![React Native](https://img.shields.io/badge/React%20Native-0.83-61DAFB.svg?style=flat&logo=react)](https://reactnative.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
 
@@ -44,7 +44,7 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 
 ## 🛠 Technology Stack
 
-* **Framework**: React Native with Expo SDK 52
+* **Framework**: React Native with Expo SDK 55
 * **Language**: TypeScript
 * **Navigation**: Expo Router (File-based routing)
 * **UI Components**: React Native Paper (Material Design 3)
@@ -58,12 +58,11 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 
 ## 📋 Prerequisites
 
-* Node.js 18 or higher
-* npm or Yarn package manager
-* Expo CLI (`npm install -g @expo/cli`)
+* Node.js 20.19.4 or higher
+* npm 10 or higher
 * OpenRouter API key (for AI food analysis)
 * iOS Simulator (macOS) or Android Emulator
-* Expo Go app (for physical device testing)
+* Expo Go or an Expo development build for device testing
 
 ## 🚀 Installation
 
@@ -75,11 +74,7 @@ cd NutritionAI-mobile
 
 ### 2. Install dependencies
 ```bash
-# Using npm
 npm install
-
-# Using yarn
-yarn install
 ```
 
 ### 3. Set up environment variables
@@ -93,11 +88,7 @@ cp .env.example .env
 
 ### 4. Start the development server
 ```bash
-# Using npm
 npm start
-
-# Using yarn
-yarn start
 
 # Or start directly with Expo
 npx expo start
@@ -111,7 +102,7 @@ npx expo run:ios
 # Android Emulator
 npx expo run:android
 
-# Or scan QR code with Expo Go app
+# Or scan the QR code with Expo Go / a development build
 ```
 
 ## ⚙️ Configuration
@@ -172,30 +163,30 @@ EXPO_PROJECT_ID=your-expo-project-id-here
 
 ## 🏗️ Project Structure
 
-```
+```text
+app/
+├── _layout.tsx               # Root layout and providers
+├── index.tsx                 # Entry screen / onboarding redirect
+├── onboarding.tsx            # Initial setup flow
+├── settings.tsx              # Settings modal
+├── manual-food-entry.tsx     # Manual food entry modal
+└── (tabs)/
+    ├── _layout.tsx           # Tab navigation
+    ├── index.tsx             # Dashboard
+    ├── food.tsx              # Food log
+    ├── food-analysis.tsx     # AI food analysis
+    ├── water.tsx             # Water tracking
+    └── analytics.tsx         # Statistics
+
 src/
-├── app/                     # Expo Router pages
-│   ├── (tabs)/             # Tab navigation screens
-│   │   ├── index.tsx       # Dashboard/Home
-│   │   ├── food.tsx        # Food log
-│   │   ├── food-analysis.tsx # AI food analysis
-│   │   ├── water.tsx       # Water tracking
-│   │   └── analytics.tsx   # Statistics
-│   ├── _layout.tsx         # Root layout
-│   ├── onboarding.tsx      # Initial setup
-│   ├── settings.tsx        # App settings
-│   └── manual-food-entry.tsx # Manual food entry
-├── src/
-│   ├── components/         # Reusable components
-│   ├── constants/          # App constants and themes
-│   ├── services/           # API services and database
-│   │   ├── database.ts     # SQLite database operations
-│   │   └── openrouter.ts   # OpenRouter AI service
-│   └── types/              # TypeScript type definitions
-│       ├── api.ts          # API response types
-│       └── database.ts     # Database schema types
-├── assets/                 # Static assets
-└── app.json               # Expo configuration
+├── constants/
+│   └── theme.ts              # App theme tokens
+├── services/
+│   ├── database.ts           # SQLite database operations
+│   └── openrouter.ts         # OpenRouter AI service
+└── types/
+    ├── api.ts                # API response types
+    └── database.ts           # Database schema types
 ```
 
 ## 🔧 Development
@@ -217,10 +208,10 @@ npm run web
 
 ### Building for Production
 ```bash
-# Build development build
-npx expo build
+# Configure native projects when needed
+npx expo prebuild
 
-# For production deployment, configure EAS Build
+# Create production builds with EAS
 npx eas build --platform ios
 npx eas build --platform android
 ```
@@ -230,8 +221,8 @@ npx eas build --platform android
 The app uses SQLite with the following main tables:
 - **users**: User profiles and preferences
 - **food_entries**: Individual food log entries
-- **water_entries**: Water intake records
-- **nutrition_goals**: User-defined nutrition targets
+- **water_intake**: Water intake records
+- **settings**: App and user settings
 
 ## 🔒 Privacy & Security
 
@@ -308,7 +299,13 @@ If you encounter any issues or have questions:
 
 ## 🔄 Updates & Changelog
 
-### Version 1.1.1 - Latest 🆕
+### Version 1.2.0 - Latest 🆕
+- 🔐 Upgraded the app to Expo SDK 55
+- 📦 Migrated the repository to an npm-based lockfile workflow
+- 🛡️ Resolved all reported `npm audit` vulnerabilities
+- ⚙️ Updated the React, React Native, and Expo package set to the current compatible versions
+
+### Version 1.1.1
 - 🐛 **Critical Bug Fix**: Fixed non-working buttons in Settings page (Save Key, Test Connection, Save Settings)
 - ⚡ **Improved Responsiveness**: Changed input components from uncontrolled to controlled for immediate state updates
 - 🔧 **Better UX**: Buttons now respond immediately as you type, no need to click away from inputs
