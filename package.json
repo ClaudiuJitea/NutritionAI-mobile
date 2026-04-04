@@ -41,7 +41,16 @@
     "babel-plugin-istanbul": {
       "test-exclude": "^8.0.0"
     },
-    "chromium-edge-launcher": "0.3.0"
+    "chromium-edge-launcher": "0.3.0",
+    "babel-plugin-module-resolver": {
+      "glob": "^13.0.6"
+    },
+    "react-native": {
+      "glob": "^13.0.6"
+    },
+    "@react-native/codegen": {
+      "glob": "^13.0.6"
+    }
   },
   "private": true
 }
