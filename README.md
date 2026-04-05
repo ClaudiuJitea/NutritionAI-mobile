@@ -1,11 +1,11 @@
-# NutritionAI Mobile 📱
+# NutritionAI Mobile
 
 A comprehensive React Native mobile application for tracking daily nutrition intake with AI-powered food analysis using image recognition. Built with Expo and TypeScript.
 
 <div align="center">
   <img src="./assets/icon.png" alt="NutritionAI Logo" width="128" height="128">
   
-  <p><em>✨ Recently updated with beautiful new app icons and enhanced user experience!</em></p>
+  <p><em>Recently updated with beautiful new app icons and enhanced user experience!</em></p>
 
   <!-- First row of 3 images -->
   <div style="display: flex; justify-content: center; gap: 10px; margin: 10px 0;">
@@ -21,28 +21,25 @@ A comprehensive React Native mobile application for tracking daily nutrition int
     <img src="https://github.com/user-attachments/assets/fb22ed6d-3eb3-485d-a7fe-e3a9a964744e" alt="IMG-20250621-WA0007" width="200">
   </div>
 
-  [![Expo](https://img.shields.io/badge/Expo-SDK%2055-000020.svg?style=flat&logo=expo)](https://expo.dev/)
-  [![React Native](https://img.shields.io/badge/React%20Native-0.83-61DAFB.svg?style=flat&logo=react)](https://reactnative.dev/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 </div>
 
 
-## ✨ Features
+## Features
 
-* 🍎 **Smart Food Tracking**: Log meals with detailed nutritional information
-* 📸 **AI Image Analysis**: Analyze food photos using OpenRouter AI (Google Gemma 4 26B A4B IT)
-* 💧 **Water Intake Tracking**: Monitor daily hydration goals with visual progress
-* 📊 **Analytics & Statistics**: Visualize nutrition trends with interactive charts
-* 🎯 **Goal Setting**: Set and track personalized nutrition and hydration goals
-* 👤 **User Profiles**: Manage personal information and health preferences
-* 📱 **Cross-Platform**: Works on both iOS and Android devices
-* 🔒 **Secure Storage**: API keys and sensitive data stored securely with Expo SecureStore  
-* 🌙 **Modern UI**: Beautiful interface built with React Native Paper
-* 📈 **Progress Tracking**: Monitor daily, weekly, and monthly nutrition progress
-* 🎨 **Professional Branding**: Custom-designed app icons optimized for all platforms
+* **Smart Food Tracking**: Log meals with detailed nutritional information
+* **AI Image Analysis**: Analyze food photos using OpenRouter AI (Google Gemma 4 26B A4B IT)
+* **Water Intake Tracking**: Monitor daily hydration goals with visual progress
+* **Analytics & Statistics**: Visualize nutrition trends with interactive charts
+* **Goal Setting**: Set and track personalized nutrition and hydration goals
+* **User Profiles**: Manage personal information and health preferences
+* **Cross-Platform**: Works on both iOS and Android devices
+* **Secure Storage**: API keys and sensitive data stored securely with Expo SecureStore  
+* **Modern UI**: Beautiful interface built with React Native Paper
+* **Progress Tracking**: Monitor daily, weekly, and monthly nutrition progress
+* **Professional Branding**: Custom-designed app icons optimized for all platforms
 
-## 🛠 Technology Stack
+## Technology Stack
 
 * **Framework**: React Native with Expo SDK 55
 * **Language**: TypeScript
@@ -56,7 +53,7 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 * **Date Management**: date-fns
 * **HTTP Client**: Axios
 
-## 📋 Prerequisites
+## Prerequisites
 
 * Node.js 20.19.4 or higher
 * npm 10 or higher
@@ -64,7 +61,7 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 * iOS Simulator (macOS) or Android Emulator
 * Expo Go or an Expo development build for device testing
 
-## 🚀 Installation
+## Installation
 
 ### 1. Clone the repository
 ```bash
@@ -105,7 +102,7 @@ npx expo run:android
 # Or scan the QR code with Expo Go / a development build
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### OpenRouter API Setup
 
@@ -126,7 +123,7 @@ OPENROUTER_API_KEY=your-openrouter-api-key-here
 EXPO_PROJECT_ID=your-expo-project-id-here
 ```
 
-## 📱 Usage
+## Usage
 
 ### Getting Started
 
@@ -137,31 +134,31 @@ EXPO_PROJECT_ID=your-expo-project-id-here
 
 ### Core Features
 
-#### 🍽️ Food Tracking
+#### Food Tracking
 - **Manual Entry**: Add food items with custom nutritional information
 - **AI Photo Analysis**: Take photos of meals for automatic analysis
 - **Meal Categories**: Organize by breakfast, lunch, dinner, or snacks
 - **Food Categories**: Automatic categorization (vegetables, fruits, grains, protein, dairy)
 
-#### 💧 Hydration Tracking
+#### Hydration Tracking
 - **Water Goals**: Set daily water intake targets
 - **Quick Logging**: Fast buttons for common serving sizes
 - **Progress Visualization**: Circular progress indicators
 - **Custom Amounts**: Add custom water amounts
 
-#### 📊 Analytics & Statistics
+#### Analytics & Statistics
 - **Daily Summaries**: Calorie and macro-nutrient breakdowns
 - **Progress Charts**: Line charts for trends over time
 - **Goal Achievement**: Visual indicators for daily goals
 - **Category Distribution**: Pie charts for food category analysis
 
-#### ⚙️ Settings & Preferences
+#### Settings & Preferences
 - **Profile Management**: Update personal information
 - **Goal Customization**: Adjust nutrition and hydration targets
 - **API Key Management**: Update or remove OpenRouter API key
 - **Data Management**: Clear app data if needed
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```text
 app/
@@ -189,7 +186,7 @@ src/
     └── database.ts           # Database schema types
 ```
 
-## 🔧 Development
+## Development
 
 ### Running in Development
 ```bash
@@ -224,14 +221,14 @@ The app uses SQLite with the following main tables:
 - **water_intake**: Water intake records
 - **settings**: App and user settings
 
-## 🔒 Privacy & Security
+## Privacy & Security
 
 * **Local Data Storage**: All personal data stored locally on device
 * **Secure API Keys**: OpenRouter API keys stored with Expo SecureStore
 * **No Data Collection**: No personal data sent to external servers (except OpenRouter for AI analysis)
 * **Offline Capable**: Core functionality works without internet connection
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -247,7 +244,7 @@ The app uses SQLite with the following main tables:
 * Test on both iOS and Android platforms
 * Ensure accessibility compliance
 
-## 📦 Building & Deployment
+## Building & Deployment
 
 ### Expo Application Services (EAS)
 
@@ -276,11 +273,11 @@ eas submit --platform ios
 eas submit --platform android
 ```
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 * [OpenRouter.ai](https://openrouter.ai/) for AI-powered food analysis
 * [Google Gemini](https://deepmind.google/technologies/gemini/) for advanced image recognition
@@ -288,7 +285,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 * [React Native Paper](https://callstack.github.io/react-native-paper/) for beautiful UI components
 * [React Native Chart Kit](https://github.com/indiespirit/react-native-chart-kit) for data visualization
 
-## 📞 Support
+## Support
 
 If you encounter any issues or have questions:
 
@@ -297,26 +294,26 @@ If you encounter any issues or have questions:
 3. Include screenshots and device information
 4. Specify steps to reproduce the problem
 
-## 🔄 Updates & Changelog
+## Updates & Changelog
 
-### Version 1.2.0 - Latest 🆕
-- 🔐 Upgraded the app to Expo SDK 55
-- 📦 Migrated the repository to an npm-based lockfile workflow
-- 🛡️ Resolved all reported `npm audit` vulnerabilities
-- ⚙️ Updated the React, React Native, and Expo package set to the current compatible versions
+### Version 1.2.0 - Latest
+- Upgraded the app to Expo SDK 55
+- Migrated the repository to an npm-based lockfile workflow
+- Resolved all reported `npm audit` vulnerabilities
+- Updated the React, React Native, and Expo package set to the current compatible versions
 
 ### Version 1.1.1
-- 🐛 **Critical Bug Fix**: Fixed non-working buttons in Settings page (Save Key, Test Connection, Save Settings)
-- ⚡ **Improved Responsiveness**: Changed input components from uncontrolled to controlled for immediate state updates
-- 🔧 **Better UX**: Buttons now respond immediately as you type, no need to click away from inputs
+- **Critical Bug Fix**: Fixed non-working buttons in Settings page (Save Key, Test Connection, Save Settings)
+- **Improved Responsiveness**: Changed input components from uncontrolled to controlled for immediate state updates
+- **Better UX**: Buttons now respond immediately as you type, no need to click away from inputs
 
 ### Version 1.1.0
-- ✨ **Brand New App Icons**: Beautiful, professionally designed icons for all platforms
-- 🎨 **Enhanced Visual Identity**: Updated app branding with modern iconography
-- 🚀 **Improved Performance**: Removed splash screen for faster app startup
-- 🔧 **Better UX**: Fixed TextInput focus issues in Settings page
-- 👁️ **Enhanced Security**: Added API key visibility toggle for better user control
-- 📱 **Store Ready**: Optimized icons for App Store and Google Play submissions
+- **Brand New App Icons**: Beautiful, professionally designed icons for all platforms
+- **Enhanced Visual Identity**: Updated app branding with modern iconography
+- **Improved Performance**: Removed splash screen for faster app startup
+- **Better UX**: Fixed TextInput focus issues in Settings page
+- **Enhanced Security**: Added API key visibility toggle for better user control
+- **Store Ready**: Optimized icons for App Store and Google Play submissions
 
 ### Version 1.0.0
 - Initial release
@@ -327,6 +324,6 @@ If you encounter any issues or have questions:
 
 ---
 
-**Made with ❤️ for healthier living**
+**Made with love for healthier living**
 
 > **Note**: This application requires an OpenRouter API key for AI features. The free tier provides sufficient usage for personal projects. For production use, consider the usage limits and pricing at [OpenRouter.ai](https://openrouter.ai/).
