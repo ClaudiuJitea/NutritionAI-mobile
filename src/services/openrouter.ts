@@ -4,7 +4,7 @@ import { OpenRouterConfig, NutritionAnalysisRequest, NutritionAnalysisResponse, 
 const DEFAULT_CONFIG: OpenRouterConfig = {
   apiKey: '', // Will be set from secure storage
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'google/gemini-2.5-flash', // Fixed stable model - use stable versions like google/gemini-2.8-flash or google/gemini-3.0-flash in future, avoid preview versions
+  model: 'google/gemma-4-26b-a4b-it',
   maxTokens: 1000
 };
 

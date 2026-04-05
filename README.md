@@ -31,7 +31,7 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 ## ✨ Features
 
 * 🍎 **Smart Food Tracking**: Log meals with detailed nutritional information
-* 📸 **AI Image Analysis**: Analyze food photos using OpenRouter AI (Google Gemini 2.5 Flash)
+* 📸 **AI Image Analysis**: Analyze food photos using OpenRouter AI (Google Gemma 4 26B A4B IT)
 * 💧 **Water Intake Tracking**: Monitor daily hydration goals with visual progress
 * 📊 **Analytics & Statistics**: Visualize nutrition trends with interactive charts
 * 🎯 **Goal Setting**: Set and track personalized nutrition and hydration goals
@@ -51,7 +51,7 @@ A comprehensive React Native mobile application for tracking daily nutrition int
 * **Charts**: React Native Chart Kit
 * **Database**: Expo SQLite (Local storage)
 * **Secure Storage**: Expo SecureStore
-* **AI Integration**: OpenRouter API with Google Gemini 2.5 Flash
+* **AI Integration**: OpenRouter API with Google Gemma 4 26B A4B IT
 * **Image Processing**: Expo Image Picker & Camera
 * **Date Management**: date-fns
 * **HTTP Client**: Axios

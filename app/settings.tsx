@@ -382,7 +382,7 @@ export default function SettingsScreen() {
 
           {/* AI Model Info */}
           <Text style={[styles.sectionDescription, { marginTop: theme.spacing.md }]}>
-            AI Model: Google Gemini 2.5 Flash
+            AI Model: Google Gemma 4 26B A4B IT
           </Text>
 
           <Text style={styles.helpText}>
