@@ -504,7 +504,7 @@ export default function FoodAnalysisScreen() {
             visible={showSuccessDialog} 
             onDismiss={() => {
               setShowSuccessDialog(false);
-              router.back();
+              resetAnalysis();
             }}
             style={styles.successDialog}
           >
@@ -522,7 +522,7 @@ export default function FoodAnalysisScreen() {
                 mode="contained"
                 onPress={() => {
                   setShowSuccessDialog(false);
-                  router.back();
+                  resetAnalysis();
                 }}
                 style={styles.successButton}
                 textColor={theme.colors.background}
@@ -688,17 +688,32 @@ export default function FoodAnalysisScreen() {
             </View>
             
             <Text style={styles.mealLabel}>Meal Type</Text>
-            <SegmentedButtons
-              value={selectedMeal}
-              onValueChange={(value: string) => setSelectedMeal(value as MealType)}
-              buttons={[
-                { value: 'breakfast', label: 'Breakfast' },
-                { value: 'lunch', label: 'Lunch' },
-                { value: 'dinner', label: 'Dinner' },
-                { value: 'snack', label: 'Snack' },
-              ]}
-              style={styles.mealButtons}
-            />
+            <View style={styles.mealButtonsContainer}>
+              {['breakfast', 'lunch', 'dinner', 'snack'].map((meal) => {
+                const isSelected = selectedMeal === meal;
+                return (
+                  <TouchableOpacity
+                    key={meal}
+                    style={[
+                      styles.mealButton,
+                      isSelected && styles.mealButtonActive,
+                    ]}
+                    onPress={() => setSelectedMeal(meal as MealType)}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={[
+                        styles.mealButtonText,
+                        isSelected && styles.mealButtonTextActive
+                      ]}
+                    >
+                      {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </Card.Content>
         </Card>
         
@@ -723,6 +738,10 @@ export default function FoodAnalysisScreen() {
             Save Entry
           </Button>
         </View>
+        
+        {/* Extra spacing to ensure buttons clear the Android navigation bar without excessive scrolling */}
+        <View style={{ height: insets.bottom + 10 }} />
+        
         </ScrollView>
         
         {/* Success Dialog */}
@@ -731,7 +750,7 @@ export default function FoodAnalysisScreen() {
             visible={showSuccessDialog} 
             onDismiss={() => {
               setShowSuccessDialog(false);
-              router.back();
+              resetAnalysis();
             }}
             style={styles.successDialog}
           >
@@ -749,7 +768,7 @@ export default function FoodAnalysisScreen() {
                 mode="contained"
                 onPress={() => {
                   setShowSuccessDialog(false);
-                  router.back();
+                  resetAnalysis();
                 }}
                 style={styles.successButton}
                 textColor={theme.colors.background}
@@ -993,8 +1012,30 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
   },
-  mealButtons: {
+  mealButtonsContainer: {
+    flexDirection: 'row',
     backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.lg,
+    padding: 4,
+    marginTop: theme.spacing.sm,
+  },
+  mealButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.borderRadius.lg - 4,
+  },
+  mealButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  mealButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  mealButtonTextActive: {
+    color: theme.colors.background,
   },
   reviewActions: {
     flexDirection: 'row',

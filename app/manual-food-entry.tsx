@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Card, TextInput, Button, SegmentedButtons, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -89,10 +89,10 @@ export default function ManualFoodEntryScreen() {
   };
 
   const mealOptions = [
-    { value: 'breakfast', label: 'Breakfast' },
-    { value: 'lunch', label: 'Lunch' },
-    { value: 'dinner', label: 'Dinner' },
-    { value: 'snack', label: 'Snack' },
+    { value: 'breakfast', label: 'Breakfast', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
+    { value: 'lunch', label: 'Lunch', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
+    { value: 'dinner', label: 'Dinner', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
+    { value: 'snack', label: 'Snack', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
   ];
 
   return (
@@ -288,20 +288,32 @@ export default function ManualFoodEntryScreen() {
       <Card style={styles.card}>
         <Card.Content>
           <Text style={styles.sectionTitle}>Meal Type</Text>
-          <SegmentedButtons
-            value={selectedMeal}
-            onValueChange={(value) => setSelectedMeal(value as MealType)}
-            buttons={mealOptions}
-            style={styles.segmentedButtons}
-            theme={{
-              colors: {
-                secondaryContainer: theme.colors.primary,
-                onSecondaryContainer: theme.colors.background,
-                outline: theme.colors.border,
-                onSurface: theme.colors.text,
-              }
-            }}
-          />
+          <View style={styles.mealButtonsContainer}>
+            {['breakfast', 'lunch', 'dinner', 'snack'].map((meal) => {
+              const isSelected = selectedMeal === meal;
+              return (
+                <TouchableOpacity
+                  key={meal}
+                  style={[
+                    styles.mealButton,
+                    isSelected && styles.mealButtonActive,
+                  ]}
+                  onPress={() => setSelectedMeal(meal as MealType)}
+                >
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={[
+                      styles.mealButtonText,
+                      isSelected && styles.mealButtonTextActive
+                    ]}
+                  >
+                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </Card.Content>
       </Card>
 
@@ -412,8 +424,30 @@ const styles = StyleSheet.create({
   nutritionInput: {
     flex: 1,
   },
-  segmentedButtons: {
+  mealButtonsContainer: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.lg,
+    padding: 4,
     marginTop: theme.spacing.sm,
+  },
+  mealButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.borderRadius.lg - 4,
+  },
+  mealButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  mealButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  mealButtonTextActive: {
+    color: theme.colors.background,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -430,7 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   bottomSpacing: {
-    height: 120,
+    height: 40,
   },
   successDialog: {
     backgroundColor: theme.colors.surface,

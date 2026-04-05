@@ -2,13 +2,15 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider } from 'expo-sqlite';
-import { PaperProvider } from 'react-native-paper';
+import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DatabaseService } from '../src/services/database';
 import { theme } from '../src/constants/theme';
 
 const paperTheme = {
+  ...MD3DarkTheme,
   colors: {
+    ...MD3DarkTheme.colors,
     primary: theme.colors.primary,
     background: theme.colors.background,
     surface: theme.colors.surface,
@@ -37,6 +39,7 @@ const paperTheme = {
     scrim: '#000000',
     backdrop: 'rgba(0, 0, 0, 0.4)',
     elevation: {
+      ...MD3DarkTheme.colors.elevation,
       level0: theme.colors.elevation.level0,
       level1: theme.colors.elevation.level1,
       level2: theme.colors.elevation.level2,
