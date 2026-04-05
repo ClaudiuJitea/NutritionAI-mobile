@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Alert, Modal } from 'react-native';
 import { Text, Card, Button, ProgressBar, IconButton, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -13,7 +14,8 @@ const QUICK_ADD_AMOUNTS = [250, 500, 750, 1000]; // ml
 
 export default function WaterScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const tabBarHeight = useBottomTabBarHeight();
+  const dbService = new DatabaseService(db);
   const [waterIntake, setWaterIntake] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -124,7 +126,10 @@ export default function WaterScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + theme.spacing.xl }}
+      >
       {/* Date Header */}
       <View style={styles.dateHeader}>
         <IconButton
@@ -579,7 +584,7 @@ const styles = StyleSheet.create({
   },
   tipsCard: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: 120,
+    marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
   },
   tipsTitle: {

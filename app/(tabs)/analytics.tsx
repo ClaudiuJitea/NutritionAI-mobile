@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Text, Card, SegmentedButtons } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -10,13 +11,15 @@ import { WeeklyStats, DailyNutrition } from '../../src/types/database';
 import { theme } from '../../src/constants/theme';
 
 const screenWidth = Dimensions.get('window').width;
+const chartWidth = screenWidth - 80;
 
 type ViewType = 'week' | 'month';
 type ChartType = 'calories' | 'macros' | 'water';
 
 export default function AnalyticsScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const tabBarHeight = useBottomTabBarHeight();
+  const dbService = new DatabaseService(db);
   const { chart } = useLocalSearchParams<{ chart?: string }>();
   const [viewType, setViewType] = useState<ViewType>('week');
   const [chartType, setChartType] = useState<ChartType>('calories');
@@ -26,6 +29,8 @@ export default function AnalyticsScreen() {
   const [consistencyDays, setConsistencyDays] = useState(0);
   const [averageCalories, setAverageCalories] = useState(0);
   const [averageWater, setAverageWater] = useState(0);
+  const hasCalorieData = weeklyStats.some((stat) => stat.calories > 0);
+  const hasWaterData = waterStats.some((stat) => stat.water > 0);
 
   const loadAnalyticsData = async () => {
     try {
@@ -91,6 +96,9 @@ export default function AnalyticsScreen() {
       strokeWidth: '2',
       stroke: theme.colors.primary,
     },
+    propsForLabels: {
+      fontSize: 10,
+    },
   };
 
   const getChartData = () => {
@@ -106,7 +114,12 @@ export default function AnalyticsScreen() {
       const dayData = weeklyStats.find(stat => stat.date === dateString);
       const waterData = waterStats.find(stat => stat.date === dateString);
       
-      labels.push(format(date, viewType === 'week' ? 'EEE' : 'M/d'));
+      const isWeekView = viewType === 'week';
+      const shouldShowLabel = isWeekView
+        ? i % 2 === 0 || i === 0
+        : i % 5 === 0 || i === 0;
+
+      labels.push(shouldShowLabel ? format(date, isWeekView ? 'EEE' : 'M/d') : '');
       
       switch (chartType) {
         case 'calories':
@@ -200,7 +213,10 @@ export default function AnalyticsScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: tabBarHeight + theme.spacing.xl }}
+    >
       {/* View Type Selector */}
       <View style={styles.selectorContainer}>
         <SegmentedButtons
@@ -279,14 +295,29 @@ export default function AnalyticsScreen() {
           {chartType === 'calories' && (
             <>
               <Text style={styles.chartTitle}>Calorie Trend</Text>
-              <LineChart
-                data={getChartData()}
-                width={screenWidth - 64}
-                height={220}
-                chartConfig={chartConfig}
-                bezier
-                style={styles.chart}
-              />
+              {hasCalorieData ? (
+                <LineChart
+                  data={getChartData()}
+                  width={chartWidth}
+                  height={220}
+                  chartConfig={chartConfig}
+                  bezier
+                  style={styles.chart}
+                  fromZero
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  withVerticalLines={false}
+                  horizontalLabelRotation={0}
+                  xLabelsOffset={-2}
+                  yLabelsOffset={10}
+                  segments={4}
+                />
+              ) : (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No calorie trend yet</Text>
+                  <Text style={styles.noDataSubtext}>Log food over a few days to see your calorie trend</Text>
+                </View>
+              )}
             </>
           )}
           
@@ -296,7 +327,7 @@ export default function AnalyticsScreen() {
               {getMacrosPieData().length > 0 ? (
                 <PieChart
                   data={getMacrosPieData()}
-                  width={screenWidth - 64}
+                  width={chartWidth}
                   height={220}
                   chartConfig={chartConfig}
                   accessor="population"
@@ -316,10 +347,10 @@ export default function AnalyticsScreen() {
           {chartType === 'water' && (
             <>
               <Text style={styles.chartTitle}>Water Intake Trend</Text>
-              {waterStats.length > 0 ? (
+              {hasWaterData ? (
                 <LineChart
                   data={getChartData()}
-                  width={screenWidth - 64}
+                  width={chartWidth}
                   height={220}
                   chartConfig={{
                     ...chartConfig,
@@ -327,6 +358,14 @@ export default function AnalyticsScreen() {
                   }}
                   style={styles.chart}
                   bezier
+                  fromZero
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  withVerticalLines={false}
+                  horizontalLabelRotation={0}
+                  xLabelsOffset={-2}
+                  yLabelsOffset={10}
+                  segments={4}
                   yAxisLabel=""
                   yAxisSuffix="ml"
                 />
@@ -346,10 +385,10 @@ export default function AnalyticsScreen() {
         <Card style={styles.chartCard}>
           <Card.Content>
                   <Text style={styles.chartTitle}>Weekly Macros Trend</Text>
-                  <BarChart
-                    data={getMacrosBarData()}
-                    width={screenWidth - 64}
-                    height={220}
+                    <BarChart
+                      data={getMacrosBarData()}
+                      width={chartWidth}
+                      height={220}
                     chartConfig={chartConfig}
                     style={styles.chart}
                     showValuesOnTopOfBars
@@ -490,18 +529,23 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   statContent: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 18,
   },
   statTitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: 'bold',
     color: theme.colors.primary,
   },
@@ -519,17 +563,21 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   chart: {
-    marginVertical: theme.spacing.sm,
+    marginVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
+    alignSelf: 'center',
   },
   noDataContainer: {
     alignItems: 'center',
@@ -549,6 +597,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   detailsTitle: {
     fontSize: 16,
@@ -574,8 +625,11 @@ const styles = StyleSheet.create({
   },
   insightsCard: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: 120,
+    marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   insightsTitle: {
     fontSize: 16,

@@ -1,28 +1,28 @@
 export const theme = {
   colors: {
-    primary: '#00D4AA', // Teal green (buttons, accents)
-    background: '#1A1D29', // Dark navy background
-    surface: '#252836', // Card/surface background
-    surfaceVariant: '#2A2D3E', // Secondary surface
+    primary: '#12D6B0', // Teal green (buttons, accents)
+    background: '#171A24', // Dark navy background
+    surface: '#212533', // Card/surface background
+    surfaceVariant: '#2B3041', // Secondary surface
     text: '#FFFFFF', // Primary text
-    textSecondary: '#8B92A5', // Secondary text
-    border: '#3A3D4E', // Border color
-    success: '#00D4AA',
-    warning: '#FFB800',
-    error: '#FF6B6B',
+    textSecondary: '#9AA3B8', // Secondary text
+    border: '#33394D', // Border color
+    success: '#12D6B0',
+    warning: '#FFB84D',
+    error: '#FF6E6E',
     elevation: {
       level0: 'transparent',
-      level1: '#2A2D3E',
-      level2: '#2F3240',
-      level3: '#343742',
-      level4: '#393C44',
-      level5: '#3E4146'
+      level1: '#232838',
+      level2: '#292E3D',
+      level3: '#303545',
+      level4: '#363C4D',
+      level5: '#3C4255'
     },
     chart: {
-      calories: '#00D4AA',
-      protein: '#8B5CF6',
-      carbs: '#F59E0B',
-      fat: '#EF4444'
+      calories: '#12D6B0',
+      protein: '#A78BFA',
+      carbs: '#F4B740',
+      fat: '#FF6E6E'
     }
   },
   spacing: {
@@ -36,7 +36,7 @@ export const theme = {
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 20
+    xl: 24
   },
   typography: {
     h1: { fontSize: 28, fontWeight: 'bold' as const },

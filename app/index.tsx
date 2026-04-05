@@ -8,7 +8,7 @@ import { theme } from '../src/constants/theme';
 
 export default function IndexScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const dbService = new DatabaseService(db);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

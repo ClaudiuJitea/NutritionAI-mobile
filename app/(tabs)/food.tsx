@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity } from 'react-native';
-import { Text, Card, FAB, IconButton, Chip, Divider, Portal, Dialog, Button } from 'react-native-paper';
+import { Text, Card, IconButton, Chip, Divider, Portal, Dialog, Button } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useFocusEffect } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
@@ -27,7 +28,8 @@ const MEAL_LABELS: Record<MealType, string> = {
 
 export default function FoodLogScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const tabBarHeight = useBottomTabBarHeight();
+  const dbService = new DatabaseService(db);
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -288,6 +290,7 @@ export default function FoodLogScreen() {
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + theme.spacing.xl }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -296,19 +299,22 @@ export default function FoodLogScreen() {
         <MealSection mealType="lunch" />
         <MealSection mealType="dinner" />
         <MealSection mealType="snack" />
-        
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
 
-      <FAB
-        icon={({ size, color }) => (
-          <Ionicons name="camera" size={size} color={color} />
-        )}
-        style={styles.fab}
-        onPress={() => router.push('/(tabs)/food-analysis')}
-        label="Analyze Food"
-        color={theme.colors.background}
-      />
+        <View style={[styles.analyzeActionContainer, { marginBottom: theme.spacing.md }]}>
+          <Button
+            mode="contained"
+            onPress={() => router.push('/(tabs)/food-analysis')}
+            style={styles.analyzeButton}
+            contentStyle={styles.analyzeButtonContent}
+            icon={({ size, color }) => (
+              <Ionicons name="camera" size={size} color={color} />
+            )}
+            textColor={theme.colors.background}
+          >
+            Analyze Food
+          </Button>
+        </View>
+      </ScrollView>
 
       {/* Delete Confirmation Dialog */}
       <Portal>
@@ -363,8 +369,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     marginHorizontal: theme.spacing.md,
     marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -388,14 +396,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.primary,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: '700',
     textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
   mealSection: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   mealHeader: {
     flexDirection: 'row',
@@ -433,6 +441,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.xl,
   },
   emptyMealContent: {
     alignItems: 'center',
@@ -451,9 +460,12 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   entryContent: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 18,
   },
   entryHeader: {
     flexDirection: 'row',
@@ -496,7 +508,7 @@ const styles = StyleSheet.create({
   nutritionRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
@@ -513,12 +525,16 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  fab: {
-    position: 'absolute',
-    margin: theme.spacing.lg,
-    right: 0,
-    bottom: 0,
+  analyzeActionContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+  },
+  analyzeButton: {
     backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.xl,
+  },
+  analyzeButtonContent: {
+    height: 54,
   },
   addMoreCard: {
     marginHorizontal: theme.spacing.lg,
@@ -547,13 +563,10 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '500',
   },
-  bottomSpacing: {
-    height: 120,
-  },
   // Delete Dialog Styles
   deleteDialog: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.xl,
     margin: theme.spacing.lg,
   },
   deleteDialogContent: {

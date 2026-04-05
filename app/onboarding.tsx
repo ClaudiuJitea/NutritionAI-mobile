@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { theme } from '../src/constants/theme';
@@ -23,7 +24,9 @@ interface OnboardingData {
 
 export default function OnboardingScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const insets = useSafeAreaInsets();
+  const bottomPadding = theme.spacing.lg + Math.min(insets.bottom, theme.spacing.lg);
+  const dbService = new DatabaseService(db);
   const [openRouterService] = useState(() => new OpenRouterService());
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -216,7 +219,7 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {/* Navigation */}
-      <View style={styles.navigation}>
+      <View style={[styles.navigation, { paddingBottom: bottomPadding }]}>
         {currentStep > 0 && (
           <Button
             mode="outlined"
@@ -1043,7 +1046,6 @@ const styles = StyleSheet.create({
   navigation: {
     flexDirection: 'row',
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
     backgroundColor: theme.colors.surface,
   },
   navButton: {

@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from '
 import { Text, Card, Button, ProgressBar } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useFocusEffect } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import * as SecureStore from 'expo-secure-store';
@@ -27,7 +28,8 @@ const NUTRITION_TIPS = [
 
 export default function DashboardScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const tabBarHeight = useBottomTabBarHeight();
+  const dbService = new DatabaseService(db);
   const [openRouterService] = useState(() => new OpenRouterService());
   const [dailyNutrition, setDailyNutrition] = useState<DailyNutrition>({
     calories: 0,
@@ -141,22 +143,23 @@ export default function DashboardScreen() {
     unit: string;
     color: string;
   }) => (
-    <Card style={styles.macroCard}>
+    <Card style={[styles.macroCard, { borderColor: `${color}33` }]}>
       <Card.Content style={styles.macroContent}>
-        <Text style={[styles.macroTitle, { color: theme.colors.textSecondary }]}>
-          {title}
-        </Text>
+        <View style={[styles.macroAccent, { backgroundColor: color }]} />
+        <Text style={[styles.macroTitle, { color }]}>{title}</Text>
         <Text style={[styles.macroValue, { color }]}>
           {Math.round(current)}
         </Text>
-        <Text style={[styles.macroUnit, { color: theme.colors.textSecondary }]}>
-          {unit}
-        </Text>
-        {goal && (
-          <Text style={[styles.macroGoal, { color: theme.colors.textSecondary }]}>
-            / {goal}
+        <View style={styles.macroMetaRow}>
+          <Text style={[styles.macroUnit, { color: theme.colors.textSecondary }]}>
+            {unit}
           </Text>
-        )}
+          {goal && (
+            <Text style={[styles.macroGoal, { color: theme.colors.textSecondary }]}>
+              Target {goal}{unit}
+            </Text>
+          )}
+        </View>
       </Card.Content>
     </Card>
   );
@@ -187,6 +190,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={{ paddingBottom: tabBarHeight + theme.spacing.xl }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
@@ -198,7 +202,7 @@ export default function DashboardScreen() {
             <Text style={styles.welcomeText}>Good {getTimeOfDay()},</Text>
             <Text style={styles.nameText}>{user?.name || 'User'}!</Text>
           </View>
-          <View style={styles.dateContainer}>
+          <View style={styles.datePill}>
             <Text style={styles.dateText}>{format(new Date(), 'EEEE, MMMM d')}</Text>
           </View>
         </View>
@@ -298,27 +302,25 @@ export default function DashboardScreen() {
         <MacroCard
           title="Protein"
           current={dailyNutrition.protein}
-          unit="g"
+          unit="grams"
           color={theme.colors.chart.protein}
         />
         <MacroCard
           title="Carbs"
           current={dailyNutrition.carbs}
-          unit="g"
+          unit="grams"
           color={theme.colors.chart.carbs}
         />
         <MacroCard
           title="Fat"
           current={dailyNutrition.fat}
-          unit="g"
+          unit="grams"
           color={theme.colors.chart.fat}
         />
       </View>
 
       {/* Nutrition Tips */}
       <NutritionTipsCard />
-      
-      <View style={styles.bottomSpacing} />
     </ScrollView>
   );
 }
@@ -345,22 +347,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   welcomeText: {
-    fontSize: 16,
+    fontSize: 15,
     color: theme.colors.textSecondary,
   },
   nameText: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
     color: theme.colors.text,
     marginTop: 4,
   },
-  dateContainer: {
+  datePill: {
     alignItems: 'flex-end',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   dateText: {
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.textSecondary,
-    fontWeight: '400',
+    fontWeight: '600',
   },
   quickActions: {
     flexDirection: 'row',
@@ -371,18 +379,24 @@ const styles = StyleSheet.create({
   primaryButton: {
     flex: 1,
     backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.xl,
   },
   secondaryButton: {
     flex: 1,
     borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: theme.colors.surface,
   },
   buttonContent: {
-    height: 48,
+    height: 52,
   },
   progressCard: {
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.md,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -391,13 +405,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   progressTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: theme.colors.text,
   },
   progressValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   progressValueContainer: {
     flexDirection: 'row',
@@ -405,8 +420,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 999,
     backgroundColor: theme.colors.surfaceVariant,
   },
   progressPercent: {
@@ -416,7 +431,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.text,
     marginHorizontal: theme.spacing.lg,
@@ -432,22 +447,46 @@ const styles = StyleSheet.create({
   macroCard: {
     flex: 1,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: 'hidden',
   },
   macroContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    minHeight: 112,
+    justifyContent: 'space-between',
+  },
+  macroAccent: {
+    width: 24,
+    height: 3,
+    borderRadius: 999,
+    marginBottom: theme.spacing.sm,
   },
   macroTitle: {
-    fontSize: 12,
-    marginBottom: theme.spacing.xs,
+    fontSize: 11,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontWeight: '700',
   },
   macroValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  macroMetaRow: {
+    width: '100%',
+    marginTop: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   macroUnit: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   macroGoal: {
     fontSize: 10,
@@ -483,6 +522,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   tipsHeader: {
     flexDirection: 'row',
@@ -494,15 +536,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
-    marginLeft: theme.spacing.sm,
     flex: 1,
   },
   tipText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
-    lineHeight: 20,
-  },
-  bottomSpacing: {
-    height: 120,
+    lineHeight: 22,
   },
 });

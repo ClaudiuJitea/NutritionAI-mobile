@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, TextInput as RNTextInput } from 'react-native';
 import { Text, Card, TextInput, Button, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
@@ -9,6 +9,30 @@ import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { User } from '../src/types/database';
 import { theme } from '../src/constants/theme';
+
+const ThemedDialog = ({
+  visible,
+  onDismiss,
+  title,
+  children,
+  actions,
+}: {
+  visible: boolean;
+  onDismiss: () => void;
+  title: string;
+  children: React.ReactNode;
+  actions: React.ReactNode;
+}) => (
+  <Dialog visible={visible} onDismiss={onDismiss} style={styles.appDialog}>
+    <Dialog.Title style={styles.appDialogTitle}>{title}</Dialog.Title>
+    <Dialog.Content>
+      <Text style={styles.appDialogText}>{children}</Text>
+    </Dialog.Content>
+    <Dialog.Actions style={styles.appDialogActions}>
+      {actions}
+    </Dialog.Actions>
+  </Dialog>
+);
 
 // Extract components outside to prevent re-creation
 const ProfileInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
@@ -36,49 +60,39 @@ const ProfileInput = ({ value, onChangeText }: { value: string; onChangeText: (v
 
 const CalorieGoalInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      mode="outlined"
-      keyboardType="numeric"
-      style={styles.goalInput}
-      right={<TextInput.Affix text="cal" />}
-      textColor={theme.colors.text}
-      placeholderTextColor={theme.colors.textSecondary}
-      outlineColor={theme.colors.border}
-      activeOutlineColor={theme.colors.primary}
-      theme={{
-        colors: {
-          onSurfaceVariant: theme.colors.textSecondary,
-          outline: theme.colors.border,
-          primary: theme.colors.primary,
-        }
-      }}
-    />
+    <View style={styles.goalInputShell}>
+      <Text style={styles.goalInputCaption}>Calories</Text>
+      <View style={styles.goalInputRow}>
+        <RNTextInput
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType="numeric"
+          style={styles.goalNativeInput}
+          placeholder="2000"
+          placeholderTextColor={theme.colors.textSecondary}
+        />
+        <Text style={styles.goalUnit}>cal</Text>
+      </View>
+    </View>
   );
 };
 
 const WaterGoalInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      mode="outlined"
-      keyboardType="numeric"
-      style={styles.goalInput}
-      right={<TextInput.Affix text="ml" />}
-      textColor={theme.colors.text}
-      placeholderTextColor={theme.colors.textSecondary}
-      outlineColor={theme.colors.border}
-      activeOutlineColor={theme.colors.primary}
-      theme={{
-        colors: {
-          onSurfaceVariant: theme.colors.textSecondary,
-          outline: theme.colors.border,
-          primary: theme.colors.primary,
-        }
-      }}
-    />
+    <View style={styles.goalInputShell}>
+      <Text style={styles.goalInputCaption}>Water</Text>
+      <View style={styles.goalInputRow}>
+        <RNTextInput
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType="numeric"
+          style={styles.goalNativeInput}
+          placeholder="2500"
+          placeholderTextColor={theme.colors.textSecondary}
+        />
+        <Text style={styles.goalUnit}>ml</Text>
+      </View>
+    </View>
   );
 };
 
@@ -118,9 +132,44 @@ const ApiKeyInput = ({ value, onChangeText, showApiKey, onToggleVisibility }: {
   );
 };
 
+const StatTile = ({ label, value, accent }: {
+  label: string;
+  value: string;
+  accent: string;
+}) => (
+  <View style={styles.statTile}>
+    <View style={[styles.statAccent, { backgroundColor: accent }]} />
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
+const InfoChip = ({ icon, label, tone = 'default' }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tone?: 'default' | 'success';
+}) => (
+  <View style={[
+    styles.infoChip,
+    tone === 'success' ? styles.infoChipSuccess : null
+  ]}>
+    <Ionicons
+      name={icon}
+      size={14}
+      color={tone === 'success' ? theme.colors.success : theme.colors.textSecondary}
+    />
+    <Text style={[
+      styles.infoChipText,
+      tone === 'success' ? styles.infoChipTextSuccess : null
+    ]}>
+      {label}
+    </Text>
+  </View>
+);
+
 export default function SettingsScreen() {
   const db = useSQLiteContext();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const dbService = new DatabaseService(db);
   const [openRouterService] = useState(() => new OpenRouterService());
 
   const [user, setUser] = useState<User | null>(null);
@@ -142,6 +191,9 @@ export default function SettingsScreen() {
   const [showResetConfirmDialog, setShowResetConfirmDialog] = useState(false);
   const [showClearDataConfirmDialog, setShowClearDataConfirmDialog] = useState(false);
   const [showApiKeyRequiredDialog, setShowApiKeyRequiredDialog] = useState(false);
+
+  const hasApiKey = apiKey.trim().length > 0;
+  const displayName = userName.trim() || user?.name || 'User';
 
   useEffect(() => {
     loadSettings();
@@ -299,13 +351,45 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.backgroundOrbTop} />
+      <View style={styles.backgroundOrbBottom} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text style={styles.heroEyebrow}>Preferences</Text>
+          <Text style={styles.heroTitle}>Tune NutritionAI to your routine</Text>
+          <Text style={styles.heroDescription}>
+            Update your profile, daily targets, and AI access from one place.
+          </Text>
+
+          <View style={styles.heroChips}>
+            <InfoChip
+              icon={hasApiKey ? 'sparkles-outline' : 'key-outline'}
+              label={hasApiKey ? 'AI ready' : 'API key needed'}
+              tone={hasApiKey ? 'success' : 'default'}
+            />
+            <InfoChip
+              icon="person-circle-outline"
+              label={displayName}
+            />
+          </View>
+
+          <View style={styles.statsRow}>
+            <StatTile label="Calories" value={`${calorieGoal || '2000'} cal`} accent={theme.colors.primary} />
+            <StatTile label="Hydration" value={`${waterGoal || '2500'} ml`} accent={theme.colors.chart.carbs} />
+          </View>
+        </View>
+
         {/* Profile Section */}
         <SettingCard title="Profile" icon="person-outline">
+          <Text style={styles.sectionEyebrow}>Identity</Text>
+          <Text style={styles.sectionDescription}>
+            This name appears across your daily tracking flow.
+          </Text>
           <ProfileInput
             value={userName}
             onChangeText={(value) => setUserName(value)}
@@ -314,6 +398,10 @@ export default function SettingsScreen() {
 
         {/* Daily Goals */}
         <SettingCard title="Daily Goals" icon="trophy-outline">
+          <Text style={styles.sectionEyebrow}>Targets</Text>
+          <Text style={styles.sectionDescription}>
+            Keep your calorie and hydration goals visible and easy to adjust.
+          </Text>
           <View style={styles.goalContainer}>
             <View style={styles.goalItem}>
               <Text style={styles.goalLabel}>Calorie Goal</Text>
@@ -335,9 +423,22 @@ export default function SettingsScreen() {
 
         {/* AI Configuration */}
         <SettingCard title="AI Configuration" icon="cog-outline">
+          <Text style={styles.sectionEyebrow}>Food Analysis</Text>
           <Text style={styles.sectionDescription}>
             Configure your OpenRouter API key for food analysis
           </Text>
+
+          <View style={styles.statusRow}>
+            <InfoChip
+              icon={hasApiKey ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+              label={hasApiKey ? 'Key stored on device' : 'No API key saved'}
+              tone={hasApiKey ? 'success' : 'default'}
+            />
+            <InfoChip
+              icon="hardware-chip-outline"
+              label="Gemma 4 26B"
+            />
+          </View>
 
           <ApiKeyInput
             value={apiKey}
@@ -381,9 +482,11 @@ export default function SettingsScreen() {
           </View>
 
           {/* AI Model Info */}
-          <Text style={[styles.sectionDescription, { marginTop: theme.spacing.md }]}>
-            AI Model: Google Gemma 4 26B A4B IT
-          </Text>
+          <View style={styles.modelBanner}>
+            <Text style={styles.modelEyebrow}>Active model</Text>
+            <Text style={styles.modelName}>Google Gemma 4 26B A4B IT</Text>
+            <Text style={styles.modelCaption}>Model ID: google/gemma-4-26b-a4b-it</Text>
+          </View>
 
           <Text style={styles.helpText}>
             💡 Get your free API key at openrouter.ai
@@ -398,12 +501,19 @@ export default function SettingsScreen() {
           style={styles.saveButton}
           buttonColor={theme.colors.primary}
           textColor="#FFFFFF"
+          contentStyle={styles.saveButtonContent}
+          labelStyle={styles.saveButtonLabel}
+          icon="content-save-outline"
         >
           Save Settings
         </Button>
 
         {/* Data Management */}
         <SettingCard title="Data Management" icon="server-outline">
+          <Text style={styles.sectionEyebrow}>Maintenance</Text>
+          <Text style={styles.sectionDescription}>
+            Reset onboarding or clear app data when you need a clean slate.
+          </Text>
           <Button
             mode="outlined"
             onPress={resetOnboarding}
@@ -426,132 +536,113 @@ export default function SettingsScreen() {
         </SettingCard>
 
         {/* App Version */}
-        <Card style={[styles.settingCard, { marginBottom: theme.spacing.xl }]}>
+        <Card style={[styles.settingCard, styles.versionCard, { marginBottom: theme.spacing.xl }]}>
           <Card.Content>
-            <Text style={styles.versionText}>
-              NutritionAI v1.0.0
-            </Text>
+            <Text style={styles.versionLabel}>NutritionAI</Text>
+            <Text style={styles.versionText}>v1.0.0</Text>
           </Card.Content>
         </Card>
       </ScrollView>
 
       {/* Success Dialogs */}
       <Portal>
-        <Dialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)}>
-          <Dialog.Title>Success!</Dialog.Title>
-          <Dialog.Content>
-            <Text>API key saved successfully.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)} title="API Key Saved" actions={
+          <>
             <Button onPress={() => setShowApiKeySuccessDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          API key saved successfully.
+        </ThemedDialog>
 
-        <Dialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)}>
-          <Dialog.Title>Connection Test</Dialog.Title>
-          <Dialog.Content>
-            <Text>✅ Successfully connected to OpenRouter API!</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)} title="Connection Test" actions={
+          <>
             <Button onPress={() => setShowConnectionSuccessDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Successfully connected to OpenRouter API.
+        </ThemedDialog>
 
-        <Dialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)}>
-          <Dialog.Title>Settings Saved</Dialog.Title>
-          <Dialog.Content>
-            <Text>Your settings have been updated successfully!</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)} title="Settings Saved" actions={
+          <>
             <Button onPress={() => setShowSettingsSuccessDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Your settings have been updated successfully.
+        </ThemedDialog>
 
         {/* Error Dialogs */}
-        <Dialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)}>
-          <Dialog.Title>Error</Dialog.Title>
-          <Dialog.Content>
-            <Text>Please enter a valid API key.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)} title="Error" actions={
+          <>
             <Button onPress={() => setShowApiKeyErrorDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Please enter a valid API key.
+        </ThemedDialog>
 
-        <Dialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)}>
-          <Dialog.Title>Connection Failed</Dialog.Title>
-          <Dialog.Content>
-            <Text>❌ Could not connect to OpenRouter API. Please check your API key and internet connection.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)} title="Connection Failed" actions={
+          <>
             <Button onPress={() => setShowConnectionErrorDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Could not connect to OpenRouter API. Please check your API key and internet connection.
+        </ThemedDialog>
 
-        <Dialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)}>
-          <Dialog.Title>Error</Dialog.Title>
-          <Dialog.Content>
-            <Text>Failed to save settings. Please try again.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)} title="Error" actions={
+          <>
             <Button onPress={() => setShowSettingsErrorDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Failed to save settings. Please try again.
+        </ThemedDialog>
 
-        <Dialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)}>
-          <Dialog.Title>API Key Required</Dialog.Title>
-          <Dialog.Content>
-            <Text>Please enter an API key first to test the connection.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)} title="API Key Required" actions={
+          <>
             <Button onPress={() => setShowApiKeyRequiredDialog(false)} textColor={theme.colors.primary}>
               OK
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          Please enter an API key first to test the connection.
+        </ThemedDialog>
 
         {/* Confirmation Dialogs */}
-        <Dialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)}>
-          <Dialog.Title>Reset Onboarding</Dialog.Title>
-          <Dialog.Content>
-            <Text>This will reset the onboarding process. You'll need to go through setup again. Continue?</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)} title="Reset Onboarding" actions={
+          <>
             <Button onPress={() => setShowResetConfirmDialog(false)} textColor={theme.colors.textSecondary}>
               Cancel
             </Button>
             <Button onPress={handleResetConfirm} textColor={theme.colors.primary}>
               Reset
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          This will reset the onboarding process. You'll need to go through setup again. Continue?
+        </ThemedDialog>
 
-        <Dialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)}>
-          <Dialog.Title>Clear All Data</Dialog.Title>
-          <Dialog.Content>
-            <Text>⚠️ This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+        <ThemedDialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)} title="Clear All Data" actions={
+          <>
             <Button onPress={() => setShowClearDataConfirmDialog(false)} textColor={theme.colors.textSecondary}>
               Cancel
             </Button>
             <Button onPress={handleClearDataConfirm} textColor={theme.colors.error}>
               Delete All
             </Button>
-          </Dialog.Actions>
-        </Dialog>
+          </>
+        }>
+          This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?
+        </ThemedDialog>
       </Portal>
     </View>
   );
@@ -562,58 +653,212 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  backgroundOrbTop: {
+    position: 'absolute',
+    top: -80,
+    right: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(18, 214, 176, 0.10)',
+  },
+  backgroundOrbBottom: {
+    position: 'absolute',
+    bottom: 120,
+    left: -90,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(244, 183, 64, 0.07)',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  heroCard: {
+    overflow: 'hidden',
+    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  heroGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(18, 214, 176, 0.12)',
+  },
+  heroEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  heroTitle: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  heroDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: theme.colors.textSecondary,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.lg,
   },
   settingCard: {
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
   },
   settingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   settingTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: theme.colors.text,
     marginLeft: theme.spacing.sm,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
   },
   sectionDescription: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
+    lineHeight: 20,
   },
   input: {
     marginBottom: theme.spacing.md,
   },
   goalContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.md,
   },
   goalItem: {
     flex: 1,
+    minWidth: 140,
   },
   goalLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '700',
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   goalInput: {
     flex: 1,
   },
+  goalInputShell: {
+    minHeight: 56,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  goalInputCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  goalInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  goalNativeInput: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  goalUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
   apiActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
   apiButton: {
     flex: 1,
+    minWidth: 140,
+    borderRadius: theme.borderRadius.lg,
+  },
+  modelBanner: {
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: 'rgba(18, 214, 176, 0.20)',
+  },
+  modelEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  modelName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  modelCaption: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
   helpText: {
     fontSize: 12,
@@ -622,16 +867,109 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginBottom: theme.spacing.lg,
-    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  saveButtonContent: {
+    minHeight: 58,
+  },
+  saveButtonLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   actionButton: {
     marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+  },
+  statTile: {
+    flex: 1,
+    minWidth: 130,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  statAccent: {
+    width: 28,
+    height: 4,
+    borderRadius: 999,
+    marginBottom: theme.spacing.md,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  statLabel: {
+    marginTop: theme.spacing.xs,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  infoChipSuccess: {
+    backgroundColor: 'rgba(18, 214, 176, 0.10)',
+    borderColor: 'rgba(18, 214, 176, 0.24)',
+  },
+  infoChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  infoChipTextSuccess: {
+    color: theme.colors.success,
+  },
+  versionCard: {
+    alignItems: 'center',
+  },
+  versionLabel: {
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: theme.spacing.xs,
   },
   versionText: {
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '700',
     color: theme.colors.textSecondary,
-    fontStyle: 'italic',
+  },
+  appDialog: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  appDialogTitle: {
+    color: theme.colors.text,
+  },
+  appDialogText: {
+    color: theme.colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  appDialogActions: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
   },
   dialogButton: {
     marginHorizontal: theme.spacing.xs,

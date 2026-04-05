@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Alert, Image, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, Image, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Button, Card, TextInput, SegmentedButtons, ActivityIndicator, Portal, Dialog } from 'react-native-paper';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -19,8 +21,10 @@ type AnalysisStep = 'camera' | 'analyzing' | 'review' | 'saving';
 
 export default function FoodAnalysisScreen() {
   const db = useSQLiteContext();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const dbService = new DatabaseService(db);
   const [openRouterService] = useState(() => new OpenRouterService());
   const cameraRef = useRef<CameraView>(null);
   
@@ -34,10 +38,47 @@ export default function FoodAnalysisScreen() {
   const [unit, setUnit] = useState('serving');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorDialogTitle, setErrorDialogTitle] = useState('Error');
+  const [errorDialogMessage, setErrorDialogMessage] = useState('');
+  const [errorDialogPrimaryLabel, setErrorDialogPrimaryLabel] = useState('OK');
+  const [errorDialogSecondaryLabel, setErrorDialogSecondaryLabel] = useState<string | null>(null);
+  const [errorDialogPrimaryAction, setErrorDialogPrimaryAction] = useState<(() => void) | null>(null);
+  const [errorDialogSecondaryAction, setErrorDialogSecondaryAction] = useState<(() => void) | null>(null);
+  const reviewBottomPadding = tabBarHeight + theme.spacing.xl;
+  const cameraBottomPadding = insets.bottom + theme.spacing.xl;
 
   useEffect(() => {
     loadApiKey();
   }, []);
+
+  const openErrorDialog = ({
+    title,
+    message,
+    primaryLabel = 'OK',
+    secondaryLabel = null,
+    onPrimary,
+    onSecondary,
+  }: {
+    title: string;
+    message: string;
+    primaryLabel?: string;
+    secondaryLabel?: string | null;
+    onPrimary?: () => void;
+    onSecondary?: () => void;
+  }) => {
+    setErrorDialogTitle(title);
+    setErrorDialogMessage(message);
+    setErrorDialogPrimaryLabel(primaryLabel);
+    setErrorDialogSecondaryLabel(secondaryLabel);
+    setErrorDialogPrimaryAction(() => onPrimary ?? (() => setShowErrorDialog(false)));
+    setErrorDialogSecondaryAction(() => onSecondary ?? (() => setShowErrorDialog(false)));
+    setShowErrorDialog(true);
+  };
+
+  const dismissErrorDialog = () => {
+    setShowErrorDialog(false);
+  };
 
   const loadApiKey = async () => {
     try {
@@ -55,14 +96,17 @@ export default function FoodAnalysisScreen() {
     const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
     console.log('API Key check:', apiKey ? 'Found' : 'Not found');
     if (!apiKey) {
-      Alert.alert(
-        'API Key Required',
-        'Please configure your OpenRouter API key in settings to use food analysis.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Settings', onPress: () => router.push('/settings') },
-        ]
-      );
+      openErrorDialog({
+        title: 'API Key Required',
+        message: 'Please configure your OpenRouter API key in settings to use food analysis.',
+        primaryLabel: 'Settings',
+        secondaryLabel: 'Cancel',
+        onPrimary: () => {
+          dismissErrorDialog();
+          router.push('/settings');
+        },
+        onSecondary: dismissErrorDialog,
+      });
       return false;
     }
     return true;
@@ -91,7 +135,10 @@ export default function FoodAnalysisScreen() {
         // Validate base64 data
         if (photo.base64.length < 1000) {
           console.error('Base64 data seems too small:', photo.base64.length);
-          Alert.alert('Error', 'Image capture failed. Please try again.');
+          openErrorDialog({
+            title: 'Capture Failed',
+            message: 'Image capture failed. Please try again.',
+          });
           return;
         }
         
@@ -99,11 +146,17 @@ export default function FoodAnalysisScreen() {
         await analyzeFood(photo.base64);
       } else {
         console.error('No base64 data from camera');
-        Alert.alert('Error', 'Failed to capture image data. Please try again.');
+        openErrorDialog({
+          title: 'Capture Failed',
+          message: 'Failed to capture image data. Please try again.',
+        });
       }
     } catch (error) {
       console.error('Error taking picture:', error);
-      Alert.alert('Error', 'Failed to take picture. Please try again.');
+      openErrorDialog({
+        title: 'Camera Error',
+        message: 'Failed to take picture. Please try again.',
+      });
     }
   };
 
@@ -121,20 +174,17 @@ export default function FoodAnalysisScreen() {
       }
       
       if (finalStatus !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'We need access to your photo library to analyze existing photos. Please enable photo library access in your device settings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Open Settings', 
-              onPress: () => {
-                // Open device settings for this app
-                Linking.openSettings();
-              }
-            },
-          ]
-        );
+        openErrorDialog({
+          title: 'Permission Required',
+          message: 'We need access to your photo library to analyze existing photos. Please enable photo library access in your device settings.',
+          primaryLabel: 'Open Settings',
+          secondaryLabel: 'Cancel',
+          onPrimary: () => {
+            dismissErrorDialog();
+            Linking.openSettings();
+          },
+          onSecondary: dismissErrorDialog,
+        });
         return;
       }
 
@@ -164,14 +214,20 @@ export default function FoodAnalysisScreen() {
           await analyzeFood(asset.base64);
         } else {
           console.log('No base64 data available');
-          Alert.alert('Error', 'Failed to process image. Please try again.');
+          openErrorDialog({
+            title: 'Image Error',
+            message: 'Failed to process image. Please try again.',
+          });
         }
       } else {
         console.log('Image selection was canceled or failed');
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      openErrorDialog({
+        title: 'Image Error',
+        message: 'Failed to pick image. Please try again.',
+      });
     }
   };
 
@@ -252,14 +308,20 @@ export default function FoodAnalysisScreen() {
         errorMessage = error.message;
       }
       
-      Alert.alert(
-        'Analysis Failed',
-        errorMessage,
-        [
-          { text: 'Retry', onPress: () => setStep('camera') },
-          { text: 'Cancel', onPress: () => router.back() },
-        ]
-      );
+      openErrorDialog({
+        title: 'Analysis Failed',
+        message: errorMessage,
+        primaryLabel: 'Retry',
+        secondaryLabel: 'Cancel',
+        onPrimary: () => {
+          dismissErrorDialog();
+          setStep('camera');
+        },
+        onSecondary: () => {
+          dismissErrorDialog();
+          router.back();
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -325,11 +387,35 @@ export default function FoodAnalysisScreen() {
     } catch (error) {
       console.error('Error saving food entry:', error);
       setStep('review'); // Reset to review step on error
-      Alert.alert('Error', 'Failed to save food entry. Please try again.');
+      openErrorDialog({
+        title: 'Save Failed',
+        message: 'Failed to save food entry. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const renderErrorDialog = () => (
+    <Portal>
+      <Dialog visible={showErrorDialog} onDismiss={dismissErrorDialog} style={styles.appDialog}>
+        <Dialog.Title style={styles.appDialogTitle}>{errorDialogTitle}</Dialog.Title>
+        <Dialog.Content>
+          <Text style={styles.appDialogText}>{errorDialogMessage}</Text>
+        </Dialog.Content>
+        <Dialog.Actions style={styles.appDialogActions}>
+          {errorDialogSecondaryLabel ? (
+            <Button onPress={() => (errorDialogSecondaryAction ?? dismissErrorDialog)()} textColor={theme.colors.textSecondary}>
+              {errorDialogSecondaryLabel}
+            </Button>
+          ) : null}
+          <Button onPress={() => (errorDialogPrimaryAction ?? dismissErrorDialog)()} textColor={theme.colors.primary}>
+            {errorDialogPrimaryLabel}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+    </Portal>
+  );
 
   const resetAnalysis = () => {
     setStep('camera');
@@ -341,81 +427,75 @@ export default function FoodAnalysisScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      <>
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+        {renderErrorDialog()}
+      </>
     );
   }
 
   if (!permission.granted) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
-        <Button mode="contained" onPress={requestPermission} textColor={theme.colors.background}>
-          Grant Permission
-        </Button>
-      </View>
-    );
+      return (
+      <>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>We need your permission to show the camera</Text>
+          <Button mode="contained" onPress={requestPermission} textColor={theme.colors.background}>
+            Grant Permission
+          </Button>
+        </View>
+        {renderErrorDialog()}
+      </>
+      );
   }
 
   if (step === 'camera') {
     return (
       <>
       <View style={styles.container}>
-        <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-          <View style={styles.cameraOverlay}>
-            <View style={styles.topControls}>
-              <Button
-                mode="contained-tonal"
-                onPress={() => router.back()}
-                icon="close"
-                style={styles.closeButton}
-                textColor={theme.colors.text}
-              >
-                Close
-              </Button>
-              <Button
-                mode="contained-tonal"
-                onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
-                icon="camera-flip"
-                style={styles.flipButton}
-                textColor={theme.colors.text}
-              >
-                Flip
-              </Button>
-            </View>
-            
-            <View style={styles.centerGuide}>
-              <View style={styles.focusFrame} />
-              <Text style={styles.guideText}>Center your food in the frame</Text>
-            </View>
-            
-            <View style={styles.bottomControls}>
-              <Button
-                mode="contained-tonal"
-                onPress={pickImage}
-                icon="image"
-                style={styles.galleryButton}
-                textColor={theme.colors.text}
-              >
-                  Photos
-              </Button>
-              
-              <Button
-                mode="contained"
-                onPress={takePicture}
-                icon="camera"
-                style={styles.captureButton}
-                contentStyle={styles.captureButtonContent}
-                textColor={theme.colors.background}
-              >
-                Capture
-              </Button>
-              
-              <View style={styles.placeholder} />
-            </View>
+        <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
+        <View pointerEvents="box-none" style={styles.cameraOverlay}>
+          <View style={styles.topControls}>
+            <Button
+              mode="contained-tonal"
+              onPress={() => router.back()}
+              icon="close"
+              style={styles.closeButton}
+              textColor={theme.colors.text}
+            >
+              Close
+            </Button>
+            <Button
+              mode="contained-tonal"
+              onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
+              icon="camera-flip"
+              style={styles.flipButton}
+              textColor={theme.colors.text}
+            >
+              Flip
+            </Button>
           </View>
-        </CameraView>
+          
+          <View pointerEvents="none" style={styles.centerGuide}>
+            <View style={styles.focusFrame} />
+            <Text style={styles.guideText}>Center your food in the frame</Text>
+          </View>
+          
+	          <View style={[styles.bottomControls, { paddingBottom: cameraBottomPadding }]}>
+	            <View style={styles.captureTray}>
+	              <TouchableOpacity onPress={pickImage} activeOpacity={0.85} style={styles.galleryButton}>
+	                <Ionicons name="image-outline" size={18} color={theme.colors.text} />
+	                <Text style={styles.galleryButtonLabel}>Photos</Text>
+	              </TouchableOpacity>
+	              
+	              <TouchableOpacity onPress={takePicture} activeOpacity={0.9} style={styles.captureButton}>
+	                <Ionicons name="camera-outline" size={18} color={theme.colors.background} />
+	                <Text style={styles.captureButtonLabel}>Capture</Text>
+	              </TouchableOpacity>
+	            </View>
+	          </View>
+        </View>
       </View>
         
         {/* Success Dialog */}
@@ -451,34 +531,41 @@ export default function FoodAnalysisScreen() {
               </Button>
             </Dialog.Actions>
           </Dialog>
-        </Portal>
+	        </Portal>
+          {renderErrorDialog()}
+	      </>
+	    );
+	  }
+
+  if (step === 'analyzing') {
+      return (
+      <>
+        <View style={styles.loadingContainer}>
+          {capturedImage && (
+            <Image source={{ uri: capturedImage }} style={styles.previewImage} />
+          )}
+          <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
+          <Text style={styles.loadingText}>Analyzing your food...</Text>
+          <Text style={styles.loadingSubtext}>This may take a few seconds</Text>
+        </View>
+        {renderErrorDialog()}
       </>
     );
   }
 
-  if (step === 'analyzing') {
-    return (
-      <View style={styles.loadingContainer}>
-        {capturedImage && (
-          <Image source={{ uri: capturedImage }} style={styles.previewImage} />
-        )}
-        <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
-        <Text style={styles.loadingText}>Analyzing your food...</Text>
-        <Text style={styles.loadingSubtext}>This may take a few seconds</Text>
-      </View>
-    );
-  }
-
   if (step === 'saving') {
-    return (
-      <View style={styles.loadingContainer}>
-        {capturedImage && (
-          <Image source={{ uri: capturedImage }} style={styles.previewImage} />
-        )}
-        <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
-        <Text style={styles.loadingText}>Saving to your food log...</Text>
-        <Text style={styles.loadingSubtext}>This will only take a moment</Text>
-      </View>
+      return (
+      <>
+        <View style={styles.loadingContainer}>
+          {capturedImage && (
+            <Image source={{ uri: capturedImage }} style={styles.previewImage} />
+          )}
+          <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
+          <Text style={styles.loadingText}>Saving to your food log...</Text>
+          <Text style={styles.loadingSubtext}>This will only take a moment</Text>
+        </View>
+        {renderErrorDialog()}
+      </>
     );
   }
 
@@ -487,7 +574,7 @@ export default function FoodAnalysisScreen() {
       <>
         <ScrollView 
           style={styles.reviewContainer}
-          contentContainerStyle={styles.reviewContent}
+          contentContainerStyle={[styles.reviewContent, { paddingBottom: reviewBottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
         {capturedImage && (
@@ -636,9 +723,6 @@ export default function FoodAnalysisScreen() {
             Save Entry
           </Button>
         </View>
-        
-        {/* Bottom spacer to ensure content is not hidden behind navigation */}
-        <View style={styles.bottomSpacer} />
         </ScrollView>
         
         {/* Success Dialog */}
@@ -674,15 +758,19 @@ export default function FoodAnalysisScreen() {
               </Button>
             </Dialog.Actions>
           </Dialog>
-        </Portal>
-      </>
-    );
-  }
+	        </Portal>
+          {renderErrorDialog()}
+	      </>
+	    );
+	  }
 
   return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={theme.colors.primary} />
-    </View>
+    <>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+      {renderErrorDialog()}
+    </>
   );
 }
 
@@ -708,7 +796,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cameraOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
     justifyContent: 'space-between',
   },
@@ -748,24 +836,49 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
   },
   bottomControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: theme.spacing.lg,
-    paddingBottom: 120, // Increased to clear floating navigation
   },
   galleryButton: {
+    flex: 1,
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   captureButton: {
+    flex: 1,
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.xl,
   },
-  captureButtonContent: {
-    height: 60,
-    width: 120,
+  captureButtonLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    color: theme.colors.background,
   },
-  placeholder: {
-    width: 80,
+  captureTray: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 8,
+  },
+  galleryButtonLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    color: theme.colors.text,
   },
   loadingContainer: {
     flex: 1,
@@ -799,7 +912,6 @@ const styles = StyleSheet.create({
   },
   reviewContent: {
     padding: theme.spacing.lg,
-    paddingBottom: 140, // Extra space for floating navigation
   },
   reviewImage: {
     width: '100%',
@@ -904,6 +1016,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     margin: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   successDialogContent: {
     alignItems: 'center',
@@ -933,5 +1047,24 @@ const styles = StyleSheet.create({
   successButton: {
     backgroundColor: theme.colors.primary,
     minWidth: 120,
+  },
+  appDialog: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    margin: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  appDialogTitle: {
+    color: theme.colors.text,
+  },
+  appDialogText: {
+    color: theme.colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  appDialogActions: {
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
   },
 });

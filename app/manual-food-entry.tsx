@@ -13,7 +13,7 @@ type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export default function ManualFoodEntryScreen() {
   const db = useSQLiteContext();
   const params = useLocalSearchParams();
-  const [dbService] = useState(() => new DatabaseService(db));
+  const dbService = new DatabaseService(db);
   
   // Check if we're in edit mode
   const isEditMode = !!params.editId;
