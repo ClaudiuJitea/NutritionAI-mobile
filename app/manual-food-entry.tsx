@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Card, TextInput, Button, SegmentedButtons, Portal, Dialog } from 'react-native-paper';
+import { View, StyleSheet, Alert, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Text, Card, Button, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,39 @@ import { DatabaseService } from '../src/services/database';
 import { theme } from '../src/constants/theme';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+const FormInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  suffix,
+  style,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric';
+  suffix?: string;
+  style?: any;
+}) => (
+  <View style={[styles.inputShell, style]}>
+    <Text style={styles.inputCaption}>{label}</Text>
+    <View style={styles.inputRowShell}>
+      <RNTextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.colors.textSecondary}
+        keyboardType={keyboardType}
+        style={styles.inputNative}
+      />
+      {suffix ? <Text style={styles.inputSuffix}>{suffix}</Text> : null}
+    </View>
+  </View>
+);
 
 export default function ManualFoodEntryScreen() {
   const db = useSQLiteContext();
@@ -110,85 +143,37 @@ export default function ManualFoodEntryScreen() {
         <Card.Content>
           <Text style={styles.sectionTitle}>Food Details</Text>
           
-          <TextInput
-            label="Food Description *"
+          <FormInput
+            label="Food Description"
             value={foodDescription}
             onChangeText={setFoodDescription}
-            style={styles.input}
-            mode="outlined"
             placeholder="e.g., Grilled chicken breast"
-            textColor={theme.colors.text}
-            placeholderTextColor={theme.colors.textSecondary}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
-            theme={{
-              colors: {
-                onSurfaceVariant: theme.colors.textSecondary,
-                outline: theme.colors.border,
-                primary: theme.colors.primary,
-              }
-            }}
+            style={styles.fullInput}
           />
 
           <View style={styles.row}>
-            <TextInput
-              label="Quantity *"
+            <FormInput
+              label="Quantity"
               value={quantity}
               onChangeText={setQuantity}
-              style={[styles.input, styles.quantityInput]}
-              mode="outlined"
+              style={styles.quantityInput}
               keyboardType="numeric"
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
             />
-            <TextInput
+            <FormInput
               label="Unit"
               value={unit}
               onChangeText={setUnit}
-              style={[styles.input, styles.unitInput]}
-              mode="outlined"
+              style={styles.unitInput}
               placeholder="serving, cup, oz, etc."
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
             />
           </View>
 
-          <TextInput
-            label="Category (Optional)"
+          <FormInput
+            label="Category"
             value={category}
             onChangeText={setCategory}
-            style={styles.input}
-            mode="outlined"
+            style={styles.fullInput}
             placeholder="e.g., Protein, Vegetable, Grain"
-            textColor={theme.colors.text}
-            placeholderTextColor={theme.colors.textSecondary}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
-            theme={{
-              colors: {
-                onSurfaceVariant: theme.colors.textSecondary,
-                outline: theme.colors.border,
-                primary: theme.colors.primary,
-              }
-            }}
           />
         </Card.Content>
       </Card>
@@ -198,88 +183,40 @@ export default function ManualFoodEntryScreen() {
           <Text style={styles.sectionTitle}>Nutrition Information</Text>
           
           <View style={styles.row}>
-            <TextInput
-              label="Calories *"
+            <FormInput
+              label="Calories"
               value={calories}
               onChangeText={setCalories}
-              style={[styles.input, styles.nutritionInput]}
-              mode="outlined"
+              style={styles.nutritionInput}
               keyboardType="numeric"
-              right={<TextInput.Affix text="cal" />}
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
+              suffix="cal"
             />
-            <TextInput
+            <FormInput
               label="Protein"
               value={protein}
               onChangeText={setProtein}
-              style={[styles.input, styles.nutritionInput]}
-              mode="outlined"
+              style={styles.nutritionInput}
               keyboardType="numeric"
-              right={<TextInput.Affix text="g" />}
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
+              suffix="g"
             />
           </View>
 
           <View style={styles.row}>
-            <TextInput
+            <FormInput
               label="Carbs"
               value={carbs}
               onChangeText={setCarbs}
-              style={[styles.input, styles.nutritionInput]}
-              mode="outlined"
+              style={styles.nutritionInput}
               keyboardType="numeric"
-              right={<TextInput.Affix text="g" />}
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
+              suffix="g"
             />
-            <TextInput
+            <FormInput
               label="Fat"
               value={fat}
               onChangeText={setFat}
-              style={[styles.input, styles.nutritionInput]}
-              mode="outlined"
+              style={styles.nutritionInput}
               keyboardType="numeric"
-              right={<TextInput.Affix text="g" />}
-              textColor={theme.colors.text}
-              placeholderTextColor={theme.colors.textSecondary}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
+              suffix="g"
             />
           </View>
         </Card.Content>
@@ -407,9 +344,43 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  input: {
+  inputShell: {
+    minHeight: 56,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+  },
+  fullInput: {
+    width: '100%',
+  },
+  inputCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  inputRowShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputNative: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  inputSuffix: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
   },
   row: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Dimensions, Linking } from 'react-native';
-import { Text, Card, TextInput, Button, SegmentedButtons, ProgressBar, Dialog, Portal } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, Alert, Linking, TextInput as RNTextInput } from 'react-native';
+import { Text, Card, Button, ProgressBar, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,63 @@ import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { theme } from '../src/constants/theme';
 
-const { width } = Dimensions.get('window');
+const FormInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  secureTextEntry,
+  autoFocus,
+  suffix,
+  actionLabel,
+  onActionPress,
+  style,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric';
+  secureTextEntry?: boolean;
+  autoFocus?: boolean;
+  suffix?: string;
+  actionLabel?: string;
+  onActionPress?: () => void;
+  style?: any;
+}) => (
+  <View style={[styles.inputShell, style]}>
+    <Text style={styles.inputCaption}>{label}</Text>
+    <View style={styles.inputShellRow}>
+      <RNTextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.colors.textSecondary}
+        keyboardType={keyboardType}
+        secureTextEntry={secureTextEntry}
+        autoFocus={autoFocus}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={styles.inputNative}
+      />
+      {suffix ? <Text style={styles.inputSuffix}>{suffix}</Text> : null}
+      {actionLabel ? (
+        <Button
+          mode="text"
+          compact
+          onPress={onActionPress}
+          textColor={theme.colors.textSecondary}
+          style={styles.inputActionButton}
+          contentStyle={styles.inputActionButtonContent}
+          labelStyle={styles.inputActionButtonLabel}
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
+    </View>
+  </View>
+);
 
 interface OnboardingData {
   name: string;
@@ -248,8 +304,7 @@ export default function OnboardingScreen() {
           <Button
             mode="contained"
             onPress={completeOnboarding}
-            disabled={!validateCurrentStep()}
-            loading={isLoading}
+            disabled={!validateCurrentStep() || isLoading}
             style={styles.navButton}
             icon="check"
           >
@@ -301,16 +356,12 @@ const WelcomeStep = () => (
       </View>
       <Text style={styles.welcomeTitle}>Welcome to NutritionAI</Text>
       <Text style={styles.welcomeSubtitle}>
-        Your personal nutrition tracking companion powered by AI
-      </Text>
-      <Text style={styles.welcomeDescription}>
-        Let's set up your profile to provide personalized nutrition recommendations and accurate calorie goals based on your lifestyle.
+        A simple setup and you're ready to track food and water.
       </Text>
       <View style={styles.featureList}>
-        <FeatureItem icon="camera" text="AI-powered food analysis" />
-        <FeatureItem icon="analytics" text="Detailed nutrition tracking" />
-        <FeatureItem icon="water" text="Hydration monitoring" />
-        <FeatureItem icon="trending-up" text="Progress insights" />
+        <FeatureItem icon="camera" text="Food analysis" />
+        <FeatureItem icon="analytics" text="Nutrition tracking" />
+        <FeatureItem icon="water" text="Water tracking" />
       </View>
     </Card.Content>
   </Card>
@@ -321,28 +372,15 @@ const NameStep = ({ name, onNameChange }: { name: string; onNameChange: (value: 
     <Card.Content>
       <Text style={styles.stepTitle}>What's your name?</Text>
       <Text style={styles.stepDescription}>
-        We'll use this to personalize your experience
+        Used across the app.
       </Text>
-      
-      <TextInput
-        label="Your Name"
+
+      <FormInput
+        label="Name"
         value={name}
         onChangeText={onNameChange}
-        mode="outlined"
-        style={styles.input}
-        placeholder="Enter your name"
+        placeholder="Your name"
         autoFocus
-        textColor={theme.colors.text}
-        placeholderTextColor={theme.colors.textSecondary}
-        outlineColor={theme.colors.border}
-        activeOutlineColor={theme.colors.primary}
-        theme={{
-          colors: {
-            onSurfaceVariant: theme.colors.textSecondary,
-            outline: theme.colors.border,
-            primary: theme.colors.primary,
-          }
-        }}
       />
     </Card.Content>
   </Card>
@@ -363,58 +401,29 @@ const PhysicalInfoStep = ({
     <Card.Content>
       <Text style={styles.stepTitle}>Physical Information</Text>
       <Text style={styles.stepDescription}>
-        This helps us calculate your personalized calorie and water goals
+        This is used to set your daily goals.
       </Text>
       
       <View style={styles.inputRow}>
-        <TextInput
-          label="Weight (kg)"
+        <FormInput
+          label="Weight"
           value={weight}
           onChangeText={onWeightChange}
-          mode="outlined"
-          style={[styles.input, styles.halfInput]}
+          style={styles.halfInput}
           placeholder="70"
           keyboardType="numeric"
-          textColor={theme.colors.text}
-          placeholderTextColor={theme.colors.textSecondary}
-          outlineColor={theme.colors.border}
-          activeOutlineColor={theme.colors.primary}
-          theme={{
-            colors: {
-              onSurfaceVariant: theme.colors.textSecondary,
-              outline: theme.colors.border,
-              primary: theme.colors.primary,
-            }
-          }}
+          suffix="kg"
         />
         
-        <TextInput
+        <FormInput
           label="Age"
           value={age}
           onChangeText={onAgeChange}
-          mode="outlined"
-          style={[styles.input, styles.halfInput]}
+          style={styles.halfInput}
           placeholder="25"
           keyboardType="numeric"
-          textColor={theme.colors.text}
-          placeholderTextColor={theme.colors.textSecondary}
-          outlineColor={theme.colors.border}
-          activeOutlineColor={theme.colors.primary}
-          theme={{
-            colors: {
-              onSurfaceVariant: theme.colors.textSecondary,
-              outline: theme.colors.border,
-              primary: theme.colors.primary,
-            }
-          }}
+          suffix="yrs"
         />
-      </View>
-      
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
-        <Text style={styles.infoText}>
-          Your information is stored locally and never shared
-        </Text>
       </View>
     </Card.Content>
   </Card>
@@ -552,45 +561,24 @@ const CalorieCustomizationStep = ({
       <Card.Content>
         <Text style={styles.stepTitle}>Calorie Goal</Text>
         <Text style={styles.stepDescription}>
-          We've calculated your daily calorie goal. You can use our recommendation or set a custom value.
+          Use the recommendation or enter your own number.
         </Text>
         
         <View style={styles.calorieRecommendation}>
           <Text style={styles.recommendedLabel}>Recommended Daily Calories</Text>
-          <Text style={styles.recommendedValue}>{estimatedCalories} calories</Text>
-          <Text style={styles.recommendedBasis}>
-            Based on: {formData.weight}kg, {formData.age} years old, {formData.activity_level.replace('_', ' ')} activity, {formData.weight_goal.replace('_', ' ')} weight goal
-          </Text>
+          <Text style={styles.recommendedValue}>{estimatedCalories} cal</Text>
         </View>
         
-        <Text style={styles.customLabel}>Custom Calorie Goal (Optional)</Text>
-        <TextInput
-          label="Custom Daily Calories"
+        <Text style={styles.customLabel}>Custom Goal</Text>
+        <FormInput
+          label="Calories"
           value={customCalories}
           onChangeText={onCustomCaloriesChange}
-          mode="outlined"
-          style={styles.input}
+          style={styles.fullInput}
           placeholder={`Default: ${estimatedCalories}`}
           keyboardType="numeric"
-          textColor={theme.colors.text}
-          placeholderTextColor={theme.colors.textSecondary}
-          outlineColor={theme.colors.border}
-          activeOutlineColor={theme.colors.primary}
-          theme={{
-            colors: {
-              onSurfaceVariant: theme.colors.textSecondary,
-              outline: theme.colors.border,
-              primary: theme.colors.primary,
-            }
-          }}
+          suffix="cal"
         />
-        
-        <View style={styles.infoBox}>
-          <Ionicons name="bulb" size={20} color={theme.colors.primary} />
-          <Text style={styles.infoText}>
-            Leave empty to use our calculated recommendation. You can always adjust this later in Settings.
-          </Text>
-        </View>
       </Card.Content>
     </Card>
   );
@@ -611,6 +599,7 @@ const ApiKeySetupStep = ({
   const [showApiKeyRequiredDialog, setShowApiKeyRequiredDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const handleTestApiKey = async () => {
     if (!apiKey.trim()) {
@@ -634,59 +623,32 @@ const ApiKeySetupStep = ({
         <Card.Content>
           <View style={styles.apiKeyHeader}>
             <Ionicons name="key" size={32} color={theme.colors.primary} />
-            <Text style={styles.stepTitle}>AI Features Setup</Text>
+            <Text style={styles.stepTitle}>API Key</Text>
           </View>
           
           <Text style={styles.stepDescription}>
-            Enable AI-powered food analysis by adding your OpenRouter API key
+            Optional. You can add this now or later in Settings.
           </Text>
 
-          {/* Features that require API key */}
-          <View style={styles.featuresContainer}>
-            <Text style={styles.featuresTitle}>Features you'll unlock:</Text>
-            <View style={styles.featuresList}>
-              <FeatureItem icon="camera" text="AI-powered food analysis from photos" />
-              <FeatureItem icon="analytics" text="Detailed nutrition breakdowns" />
-              <FeatureItem icon="bulb" text="Personalized nutrition tips" />
-              <FeatureItem icon="restaurant" text="Smart meal recognition" />
-            </View>
-          </View>
-
-          {/* Warning box */}
-          <View style={styles.warningBox}>
-            <Ionicons name="warning" size={20} color={theme.colors.warning} />
-            <Text style={styles.warningText}>
-              Without an API key, you'll miss out on AI food analysis and smart nutrition features. You can add this later in Settings.
-            </Text>
-          </View>
-
-          <TextInput
-            label="OpenRouter API Key (Optional)"
+          <FormInput
+            label="OpenRouter API Key"
             value={apiKey}
             onChangeText={onApiKeyChange}
-            mode="outlined"
-            style={styles.input}
+            style={styles.fullInput}
             placeholder="sk-or-v1-..."
-            secureTextEntry
-            textColor={theme.colors.text}
-            placeholderTextColor={theme.colors.textSecondary}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
-            right={
-              testResult === 'success' ? (
-                <TextInput.Icon icon="check-circle" color={theme.colors.success} />
-              ) : testResult === 'error' ? (
-                <TextInput.Icon icon="close-circle" color={theme.colors.error} />
-              ) : undefined
-            }
-            theme={{
-              colors: {
-                onSurfaceVariant: theme.colors.textSecondary,
-                outline: theme.colors.border,
-                primary: theme.colors.primary,
-              }
-            }}
+            secureTextEntry={!showApiKey}
+            actionLabel={showApiKey ? 'Hide' : 'Show'}
+            onActionPress={() => setShowApiKey((current) => !current)}
           />
+
+          {testResult ? (
+            <Text style={[
+              styles.apiStatusText,
+              testResult === 'success' ? styles.apiStatusSuccess : styles.apiStatusError
+            ]}>
+              {testResult === 'success' ? 'Key looks valid.' : 'Key test failed.'}
+            </Text>
+          ) : null}
 
           {apiKey.trim() && (
             <Button
@@ -702,32 +664,23 @@ const ApiKeySetupStep = ({
             </Button>
           )}
 
-          {/* Help section */}
-          <View style={styles.helpSection}>
-            <Text style={styles.helpTitle}>How to get your API key:</Text>
-            <Text style={styles.helpStep}>1. Visit openrouter.ai</Text>
-            <Text style={styles.helpStep}>2. Create a free account</Text>
-            <Text style={styles.helpStep}>3. Generate an API key</Text>
-            <Text style={styles.helpStep}>4. Copy and paste it above</Text>
-            
-            <Button
-              mode="text"
-              onPress={() => Linking.openURL('https://openrouter.ai')}
-              style={styles.helpButton}
-              textColor={theme.colors.primary}
-              icon="open-in-new"
-              compact
-            >
-              Open OpenRouter.ai
-            </Button>
-          </View>
-
           <View style={styles.skipInfo}>
             <Ionicons name="information-circle" size={16} color={theme.colors.textSecondary} />
             <Text style={styles.skipInfoText}>
-              You can skip this step and add your API key later in Settings to enable AI features.
+              You can skip this and add it later in Settings.
             </Text>
           </View>
+
+          <Button
+            mode="text"
+            onPress={() => Linking.openURL('https://openrouter.ai')}
+            style={styles.helpButton}
+            textColor={theme.colors.primary}
+            icon="open-in-new"
+            compact
+          >
+            Open OpenRouter.ai
+          </Button>
         </Card.Content>
       </Card>
 
@@ -901,23 +854,16 @@ const styles = StyleSheet.create({
   welcomeSubtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
-  },
-  welcomeDescription: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
     marginBottom: theme.spacing.xl,
+    textAlign: 'center',
   },
   featureList: {
-    // Remove flexWrap and gap, let them stack vertically
+    width: '100%',
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   featureText: {
     fontSize: 14,
@@ -933,11 +879,57 @@ const styles = StyleSheet.create({
   stepDescription: {
     fontSize: 14,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     lineHeight: 20,
   },
-  input: {
+  inputShell: {
+    minHeight: 56,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: theme.spacing.md,
+  },
+  fullInput: {
+    width: '100%',
+  },
+  inputCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  inputShellRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputNative: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  inputSuffix: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
+  },
+  inputActionButton: {
+    marginLeft: theme.spacing.sm,
+  },
+  inputActionButtonContent: {
+    minHeight: 32,
+  },
+  inputActionButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   inputRow: {
     flexDirection: 'row',
@@ -946,29 +938,12 @@ const styles = StyleSheet.create({
   halfInput: {
     flex: 1,
   },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginTop: theme.spacing.md,
-  },
-  infoText: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginLeft: theme.spacing.sm,
-    flex: 1,
-  },
   sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.md,
-  },
-  segmentedButtons: {
-    marginBottom: theme.spacing.sm,
   },
   activityButtonsContainer: {
     flexDirection: 'row',
@@ -1026,13 +1001,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  recommendedBasis: {
-    fontSize: 11,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
+    marginBottom: 0,
   },
   customLabel: {
     fontSize: 16,
@@ -1086,52 +1055,23 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   testButton: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.xs,
   },
   apiKeyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
-  featuresContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  featuresList: {
-    // Remove flexWrap and gap, let them stack vertically
-  },
-  warningBox: {
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  warningText: {
+  apiStatusText: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginLeft: theme.spacing.sm,
-    flex: 1,
-  },
-  helpSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  helpTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
+    marginTop: -4,
     marginBottom: theme.spacing.sm,
   },
-  helpStep: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
+  apiStatusSuccess: {
+    color: theme.colors.success,
+  },
+  apiStatusError: {
+    color: theme.colors.error,
   },
   helpButton: {
     marginTop: theme.spacing.sm,

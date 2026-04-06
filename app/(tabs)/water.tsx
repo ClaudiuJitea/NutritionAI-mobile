@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Modal } from 'react-native';
-import { Text, Card, Button, ProgressBar, IconButton, TextInput, Portal, Dialog } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, Alert, TextInput as RNTextInput } from 'react-native';
+import { Text, Card, Button, ProgressBar, IconButton, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -11,6 +11,36 @@ import { User } from '../../src/types/database';
 import { theme } from '../../src/constants/theme';
 
 const QUICK_ADD_AMOUNTS = [250, 500, 750, 1000]; // ml
+
+const DialogInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  accentColor,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  accentColor: string;
+}) => (
+  <View style={[styles.dialogInputShell, { borderColor: accentColor + '40' }]}>
+    <Text style={styles.dialogInputCaption}>{label}</Text>
+    <View style={styles.dialogInputRow}>
+      <RNTextInput
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType="numeric"
+        placeholder={placeholder}
+        placeholderTextColor={theme.colors.textSecondary}
+        autoFocus
+        style={styles.dialogInputNative}
+      />
+      <Text style={styles.dialogInputUnit}>ml</Text>
+    </View>
+  </View>
+);
 
 export default function WaterScreen() {
   const db = useSQLiteContext();
@@ -308,26 +338,12 @@ export default function WaterScreen() {
           </Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
             <Text style={styles.dialogDescription}>Enter amount in ml:</Text>
-            <TextInput
-              mode="outlined"
+            <DialogInput
+              label="Water"
               value={inputAmount}
               onChangeText={setInputAmount}
-              keyboardType="numeric"
               placeholder="Enter amount (e.g., 250)"
-              placeholderTextColor={theme.colors.textSecondary}
-              autoFocus
-              style={styles.dialogInput}
-              textColor={theme.colors.text}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
-              right={<TextInput.Affix text="ml" />}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.primary,
-                }
-              }}
+              accentColor={theme.colors.primary}
             />
             <Text style={styles.dialogHint}>Recommended: 250ml per glass</Text>
           </Dialog.Content>
@@ -372,26 +388,12 @@ export default function WaterScreen() {
           </Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
             <Text style={styles.dialogDescription}>Enter amount to remove (ml):</Text>
-            <TextInput
-              mode="outlined"
+            <DialogInput
+              label="Water"
               value={inputAmount}
               onChangeText={setInputAmount}
-              keyboardType="numeric"
               placeholder="Enter amount to remove"
-              placeholderTextColor={theme.colors.textSecondary}
-              autoFocus
-              style={styles.dialogInput}
-              textColor={theme.colors.text}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.error}
-              right={<TextInput.Affix text="ml" />}
-              theme={{
-                colors: {
-                  onSurfaceVariant: theme.colors.textSecondary,
-                  outline: theme.colors.border,
-                  primary: theme.colors.error,
-                }
-              }}
+              accentColor={theme.colors.error}
             />
             <Text style={styles.dialogHint}>Current intake: {waterIntake} ml</Text>
           </Dialog.Content>
@@ -627,8 +629,39 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
-  dialogInput: {
+  dialogInputShell: {
+    minHeight: 56,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: theme.spacing.xs,
+  },
+  dialogInputCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  dialogInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dialogInputNative: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  dialogInputUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
   },
   dialogHint: {
     fontSize: 11,

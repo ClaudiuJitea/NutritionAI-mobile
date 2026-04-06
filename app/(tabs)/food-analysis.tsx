@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Alert, Image, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Button, Card, TextInput, SegmentedButtons, ActivityIndicator, Portal, Dialog } from 'react-native-paper';
+import { View, StyleSheet, Alert, Image, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Text, Button, Card, ActivityIndicator, Portal, Dialog } from 'react-native-paper';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -18,6 +18,39 @@ import { theme } from '../../src/constants/theme';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type AnalysisStep = 'camera' | 'analyzing' | 'review' | 'saving';
+
+const FormInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  suffix,
+  style,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric';
+  suffix?: string;
+  style?: any;
+}) => (
+  <View style={[styles.formInputShell, style]}>
+    <Text style={styles.formInputCaption}>{label}</Text>
+    <View style={styles.formInputRow}>
+      <RNTextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.colors.textSecondary}
+        keyboardType={keyboardType}
+        style={styles.formInputNative}
+      />
+      {suffix ? <Text style={styles.formInputSuffix}>{suffix}</Text> : null}
+    </View>
+  </View>
+);
 
 export default function FoodAnalysisScreen() {
   const db = useSQLiteContext();
@@ -626,7 +659,7 @@ export default function FoodAnalysisScreen() {
             <Text style={styles.editTitle}>Adjust Details</Text>
             
             <View style={styles.quantityRow}>
-              <TextInput
+              <FormInput
                 label="Quantity"
                 value={quantity}
                 onChangeText={(text) => {
@@ -645,21 +678,9 @@ export default function FoodAnalysisScreen() {
                 }}
                 keyboardType="numeric"
                 style={styles.quantityInput}
-                mode="outlined"
                 placeholder={unit === 'serving' ? 'e.g., 1x, 2x' : 'e.g., 150, 200'}
-                textColor={theme.colors.text}
-                placeholderTextColor={theme.colors.textSecondary}
-                outlineColor={theme.colors.border}
-                activeOutlineColor={theme.colors.primary}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: theme.colors.textSecondary,
-                    outline: theme.colors.border,
-                    primary: theme.colors.primary,
-                  }
-                }}
               />
-              <TextInput
+              <FormInput
                 label="Unit"
                 value={unit}
                 onChangeText={(text) => {
@@ -670,20 +691,9 @@ export default function FoodAnalysisScreen() {
                     setUnit(text);
                   }
                 }}
+                keyboardType="default"
                 style={styles.unitInput}
-                mode="outlined"
                 placeholder="serving or grams"
-                textColor={theme.colors.text}
-                placeholderTextColor={theme.colors.textSecondary}
-                outlineColor={theme.colors.border}
-                activeOutlineColor={theme.colors.primary}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: theme.colors.textSecondary,
-                    outline: theme.colors.border,
-                    primary: theme.colors.primary,
-                  }
-                }}
               />
             </View>
             
@@ -1000,6 +1010,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
+  },
+  formInputShell: {
+    minHeight: 56,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: theme.spacing.md,
+  },
+  formInputCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  formInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  formInputNative: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  formInputSuffix: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
   },
   quantityInput: {
     flex: 1,
