@@ -346,7 +346,7 @@ export default function AnalyticsScreen() {
           
           {chartType === 'water' && (
             <>
-              <Text style={styles.chartTitle}>Water Intake Trend</Text>
+              <Text style={styles.chartTitle}>Water Trend</Text>
               {hasWaterData ? (
                 <LineChart
                   data={getChartData()}
@@ -409,7 +409,7 @@ export default function AnalyticsScreen() {
             <View style={styles.detailsGrid}>
               {chartType === 'water' ? (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Water Intake</Text>
+                  <Text style={styles.detailLabel}>Water</Text>
                   <Text style={[styles.detailValue, { color: theme.colors.primary }]}>
                     {Math.round(dailyNutrition.water)} ml
                   </Text>

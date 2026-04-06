@@ -1,15 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { ActivityIndicator } from 'react-native-paper';
+import React, { useEffect } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import { DatabaseService } from '../src/services/database';
-import { theme } from '../src/constants/theme';
 
 export default function IndexScreen() {
   const db = useSQLiteContext();
   const dbService = new DatabaseService(db);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -30,27 +26,8 @@ export default function IndexScreen() {
       console.error('Error checking onboarding status:', error);
       // Default to onboarding if there's an error
       router.replace('/onboarding');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
   return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-}); 

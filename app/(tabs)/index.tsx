@@ -383,7 +383,7 @@ export default function DashboardScreen() {
       <Card style={styles.progressCard}>
         <Card.Content>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Water Intake</Text>
+            <Text style={styles.progressTitle}>Water</Text>
               <View style={styles.progressValueContainer}>
             <Text style={styles.progressValue}>
               {Math.round(dailyNutrition.water)} / {user?.water_goal || 2500} ml

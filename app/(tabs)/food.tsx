@@ -403,14 +403,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mealSection: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   mealTitleRow: {
     flexDirection: 'row',

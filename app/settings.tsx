@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TextInput as RNTextInput } from 'react-native';
-import { Text, Card, TextInput, Button, Dialog, Portal } from 'react-native-paper';
+import { Text, Card, Button, Dialog, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -37,24 +37,18 @@ const ThemedDialog = ({
 // Extract components outside to prevent re-creation
 const ProfileInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
   return (
-    <TextInput
-      label="Name"
-      value={value}
-      onChangeText={onChangeText}
-      mode="outlined"
-      style={styles.input}
-      textColor={theme.colors.text}
-      placeholderTextColor={theme.colors.textSecondary}
-      outlineColor={theme.colors.border}
-      activeOutlineColor={theme.colors.primary}
-      theme={{
-        colors: {
-          onSurfaceVariant: theme.colors.textSecondary,
-          outline: theme.colors.border,
-          primary: theme.colors.primary,
-        }
-      }}
-    />
+    <View style={styles.goalInputShell}>
+      <Text style={styles.goalInputCaption}>Name</Text>
+      <View style={styles.goalInputRow}>
+        <RNTextInput
+          value={value}
+          onChangeText={onChangeText}
+          style={styles.profileNativeInput}
+          placeholder="Your name"
+          placeholderTextColor={theme.colors.textSecondary}
+        />
+      </View>
+    </View>
   );
 };
 
@@ -103,32 +97,32 @@ const ApiKeyInput = ({ value, onChangeText, showApiKey, onToggleVisibility }: {
   onToggleVisibility: () => void;
 }) => {
   return (
-    <TextInput
-      label="OpenRouter API Key"
-      value={value}
-      onChangeText={onChangeText}
-      secureTextEntry={!showApiKey}
-      mode="outlined"
-      style={styles.input}
-      placeholder="sk-or-v1-..."
-      textColor={theme.colors.text}
-      placeholderTextColor={theme.colors.textSecondary}
-      outlineColor={theme.colors.border}
-      activeOutlineColor={theme.colors.primary}
-      right={
-        <TextInput.Icon
-          icon={showApiKey ? "eye-off" : "eye"}
-          onPress={onToggleVisibility}
+    <View style={styles.goalInputShell}>
+      <Text style={styles.goalInputCaption}>OpenRouter API Key</Text>
+      <View style={styles.goalInputRow}>
+        <RNTextInput
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={!showApiKey}
+          style={styles.apiKeyNativeInput}
+          placeholder="sk-or-v1-..."
+          placeholderTextColor={theme.colors.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-      }
-      theme={{
-        colors: {
-          onSurfaceVariant: theme.colors.textSecondary,
-          outline: theme.colors.border,
-          primary: theme.colors.primary,
-        }
-      }}
-    />
+        <Button
+          mode="text"
+          compact
+          onPress={onToggleVisibility}
+          textColor={theme.colors.textSecondary}
+          style={styles.apiKeyVisibilityButton}
+          contentStyle={styles.apiKeyVisibilityButtonContent}
+          labelStyle={styles.apiKeyVisibilityButtonLabel}
+        >
+          {showApiKey ? 'Hide' : 'Show'}
+        </Button>
+      </View>
+    </View>
   );
 };
 
@@ -194,6 +188,8 @@ export default function SettingsScreen() {
 
   const hasApiKey = apiKey.trim().length > 0;
   const displayName = userName.trim() || user?.name || 'User';
+  const configuredModelId = openRouterService.getCurrentModel();
+  const configuredModelName = 'Google Gemma 4 26B A4B IT';
 
   useEffect(() => {
     loadSettings();
@@ -390,10 +386,13 @@ export default function SettingsScreen() {
           <Text style={styles.sectionDescription}>
             This name appears across your daily tracking flow.
           </Text>
-          <ProfileInput
-            value={userName}
-            onChangeText={(value) => setUserName(value)}
-          />
+          <View style={styles.goalItem}>
+            <Text style={styles.goalLabel}>Name</Text>
+            <ProfileInput
+              value={userName}
+              onChangeText={(value) => setUserName(value)}
+            />
+          </View>
         </SettingCard>
 
         {/* Daily Goals */}
@@ -433,10 +432,6 @@ export default function SettingsScreen() {
               icon={hasApiKey ? 'checkmark-circle-outline' : 'alert-circle-outline'}
               label={hasApiKey ? 'Key stored on device' : 'No API key saved'}
               tone={hasApiKey ? 'success' : 'default'}
-            />
-            <InfoChip
-              icon="hardware-chip-outline"
-              label="Gemma 4 26B"
             />
           </View>
 
@@ -483,14 +478,18 @@ export default function SettingsScreen() {
 
           {/* AI Model Info */}
           <View style={styles.modelBanner}>
-            <Text style={styles.modelEyebrow}>Active model</Text>
-            <Text style={styles.modelName}>Google Gemma 4 26B A4B IT</Text>
-            <Text style={styles.modelCaption}>Model ID: google/gemma-4-26b-a4b-it</Text>
+            <Text style={styles.modelEyebrow}>
+              {hasApiKey ? 'Configured model' : 'Model status'}
+            </Text>
+            <Text style={styles.modelName}>
+              {hasApiKey ? configuredModelName : 'No model active'}
+            </Text>
+            <Text style={styles.modelCaption}>
+              {hasApiKey
+                ? `Model ID: ${configuredModelId}`
+                : 'Add and save an API key to enable food analysis.'}
+            </Text>
           </View>
-
-          <Text style={styles.helpText}>
-            💡 Get your free API key at openrouter.ai
-          </Text>
         </SettingCard>
 
         <Button
@@ -546,101 +545,83 @@ export default function SettingsScreen() {
 
       {/* Success Dialogs */}
       <Portal>
-        <ThemedDialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)} title="API Key Saved" actions={
-          <>
-            <Button onPress={() => setShowApiKeySuccessDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)} title="API Key Saved" actions={[
+          <Button key="ok" onPress={() => setShowApiKeySuccessDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           API key saved successfully.
         </ThemedDialog>
 
-        <ThemedDialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)} title="Connection Test" actions={
-          <>
-            <Button onPress={() => setShowConnectionSuccessDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)} title="Connection Test" actions={[
+          <Button key="ok" onPress={() => setShowConnectionSuccessDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Successfully connected to OpenRouter API.
         </ThemedDialog>
 
-        <ThemedDialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)} title="Settings Saved" actions={
-          <>
-            <Button onPress={() => setShowSettingsSuccessDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)} title="Settings Saved" actions={[
+          <Button key="ok" onPress={() => setShowSettingsSuccessDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Your settings have been updated successfully.
         </ThemedDialog>
 
         {/* Error Dialogs */}
-        <ThemedDialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)} title="Error" actions={
-          <>
-            <Button onPress={() => setShowApiKeyErrorDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)} title="Error" actions={[
+          <Button key="ok" onPress={() => setShowApiKeyErrorDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Please enter a valid API key.
         </ThemedDialog>
 
-        <ThemedDialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)} title="Connection Failed" actions={
-          <>
-            <Button onPress={() => setShowConnectionErrorDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)} title="Connection Failed" actions={[
+          <Button key="ok" onPress={() => setShowConnectionErrorDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Could not connect to OpenRouter API. Please check your API key and internet connection.
         </ThemedDialog>
 
-        <ThemedDialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)} title="Error" actions={
-          <>
-            <Button onPress={() => setShowSettingsErrorDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)} title="Error" actions={[
+          <Button key="ok" onPress={() => setShowSettingsErrorDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Failed to save settings. Please try again.
         </ThemedDialog>
 
-        <ThemedDialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)} title="API Key Required" actions={
-          <>
-            <Button onPress={() => setShowApiKeyRequiredDialog(false)} textColor={theme.colors.primary}>
-              OK
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)} title="API Key Required" actions={[
+          <Button key="ok" onPress={() => setShowApiKeyRequiredDialog(false)} textColor={theme.colors.primary}>
+            OK
+          </Button>
+        ]}>
           Please enter an API key first to test the connection.
         </ThemedDialog>
 
         {/* Confirmation Dialogs */}
-        <ThemedDialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)} title="Reset Onboarding" actions={
-          <>
-            <Button onPress={() => setShowResetConfirmDialog(false)} textColor={theme.colors.textSecondary}>
-              Cancel
-            </Button>
-            <Button onPress={handleResetConfirm} textColor={theme.colors.primary}>
-              Reset
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)} title="Reset Onboarding" actions={[
+          <Button key="cancel" onPress={() => setShowResetConfirmDialog(false)} textColor={theme.colors.textSecondary}>
+            Cancel
+          </Button>,
+          <Button key="reset" onPress={handleResetConfirm} textColor={theme.colors.primary}>
+            Reset
+          </Button>
+        ]}>
           This will reset the onboarding process. You'll need to go through setup again. Continue?
         </ThemedDialog>
 
-        <ThemedDialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)} title="Clear All Data" actions={
-          <>
-            <Button onPress={() => setShowClearDataConfirmDialog(false)} textColor={theme.colors.textSecondary}>
-              Cancel
-            </Button>
-            <Button onPress={handleClearDataConfirm} textColor={theme.colors.error}>
-              Delete All
-            </Button>
-          </>
-        }>
+        <ThemedDialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)} title="Clear All Data" actions={[
+          <Button key="cancel" onPress={() => setShowClearDataConfirmDialog(false)} textColor={theme.colors.textSecondary}>
+            Cancel
+          </Button>,
+          <Button key="delete" onPress={handleClearDataConfirm} textColor={theme.colors.error}>
+            Delete All
+          </Button>
+        ]}>
           This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?
         </ThemedDialog>
       </Portal>
@@ -760,9 +741,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     lineHeight: 20,
   },
-  input: {
-    marginBottom: theme.spacing.md,
-  },
   goalContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -791,6 +769,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    marginBottom: theme.spacing.md,
   },
   goalInputCaption: {
     fontSize: 11,
@@ -810,6 +789,31 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 20,
     fontWeight: '700',
+  },
+  profileNativeInput: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  apiKeyNativeInput: {
+    flex: 1,
+    paddingVertical: 0,
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  apiKeyVisibilityButton: {
+    marginLeft: theme.spacing.sm,
+  },
+  apiKeyVisibilityButtonContent: {
+    minHeight: 32,
+  },
+  apiKeyVisibilityButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   goalUnit: {
     fontSize: 12,

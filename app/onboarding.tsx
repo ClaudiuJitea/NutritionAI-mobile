@@ -768,12 +768,9 @@ const ApiKeySetupStep = ({
           style={styles.customDialog}
         >
           <Dialog.Content style={styles.dialogContent}>
-            <View style={styles.dialogIconContainer}>
-              <Ionicons name="checkmark-circle" size={60} color={theme.colors.success} />
-            </View>
             <Text style={styles.dialogTitle}>Success!</Text>
             <Text style={styles.dialogMessage}>
-              ✅ API key is valid and working correctly!
+              API key is valid and working correctly.
             </Text>
           </Dialog.Content>
           <Dialog.Actions style={styles.dialogActions}>
