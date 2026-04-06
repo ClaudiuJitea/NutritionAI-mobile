@@ -40,6 +40,17 @@ Guidelines:
 - Do not include any text outside the JSON object
 `;
 
+export interface NutritionTipContext {
+  currentTip?: string;
+  recentTips?: string[];
+  calorieGoal?: number;
+  waterGoal?: number;
+  currentCalories?: number;
+  currentWater?: number;
+  weightGoal?: string;
+  activityLevel?: string;
+}
+
 export class OpenRouterService {
   private config: OpenRouterConfig;
 
@@ -228,24 +239,58 @@ export class OpenRouterService {
     return this.config.model;
   }
 
-  async generateNutritionTip(): Promise<string> {
+  async generateNutritionTip(context?: NutritionTipContext): Promise<string> {
     if (!this.config.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
+      const avoidedTips = [
+        ...(context?.currentTip ? [context.currentTip] : []),
+        ...(context?.recentTips || [])
+      ].slice(0, 8);
+
+      const contextLines = [
+        context?.calorieGoal ? `- Daily calorie goal: ${context.calorieGoal}` : null,
+        context?.waterGoal ? `- Daily water goal: ${context.waterGoal} ml` : null,
+        typeof context?.currentCalories === 'number' ? `- Calories logged today: ${Math.round(context.currentCalories)}` : null,
+        typeof context?.currentWater === 'number' ? `- Water logged today: ${Math.round(context.currentWater)} ml` : null,
+        context?.weightGoal ? `- Weight goal: ${context.weightGoal}` : null,
+        context?.activityLevel ? `- Activity level: ${context.activityLevel}` : null,
+      ].filter(Boolean);
+
+      const avoidanceBlock = avoidedTips.length > 0
+        ? `Avoid repeating, rephrasing, or giving a close variation of any of these prior tips:\n${avoidedTips.map((tip, index) => `${index + 1}. ${tip}`).join('\n')}`
+        : 'There are no prior tips to avoid.';
+
       const response = await axios.post(
         `${this.config.baseURL}/chat/completions`,
         {
           model: this.config.model,
           messages: [
             {
+              role: 'system',
+              content: 'You write nutrition tips for a mobile app. Every tip must be materially different from prior tips, concrete, and immediately useful. Do not paraphrase prior advice. Output plain text only.'
+            },
+            {
               role: 'user',
-              content: 'Generate a helpful nutrition tip in 1-2 sentences. Focus on practical advice for healthy eating.'
+              content: `Generate exactly one nutrition tip in 1-2 sentences.
+
+Requirements:
+- The tip must introduce a genuinely new angle, habit, or tactic.
+- Do not repeat, paraphrase, generalize, or slightly reword previous tips.
+- Avoid generic advice like "eat more vegetables", "drink more water", or "balance your meals" unless the tactic is meaningfully different and specific.
+- Focus on a practical action the user can try today.
+- Output only the tip text with no bullets, labels, quotes, or intro.
+
+User context:
+${contextLines.length > 0 ? contextLines.join('\n') : '- No user context available'}
+
+${avoidanceBlock}`
             }
           ],
-          max_tokens: 100,
-          temperature: 0.7
+          max_tokens: 120,
+          temperature: 1
         },
         {
           headers: {
@@ -256,7 +301,8 @@ export class OpenRouterService {
         }
       );
 
-      return response.data.choices[0]?.message?.content || 'Stay hydrated and eat a variety of colorful fruits and vegetables!';
+      const tip = response.data.choices[0]?.message?.content?.trim();
+      return tip || 'Stay hydrated and eat a variety of colorful fruits and vegetables!';
     } catch (error) {
       console.error('Error generating nutrition tip:', error);
       return 'Remember to balance your meals with proteins, healthy fats, and complex carbohydrates!';

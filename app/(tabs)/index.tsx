@@ -26,6 +26,54 @@ const NUTRITION_TIPS = [
   "Eat a variety of colorful foods to ensure you get diverse nutrients."
 ];
 
+const RECENT_TIPS_STORAGE_KEY = 'recent_nutrition_tips';
+const MAX_RECENT_TIPS = 8;
+
+function normalizeTip(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getWordSet(text: string): Set<string> {
+  return new Set(
+    normalizeTip(text)
+      .split(' ')
+      .filter((word) => word.length > 3)
+  );
+}
+
+function areTipsTooSimilar(first: string, second: string): boolean {
+  const normalizedFirst = normalizeTip(first);
+  const normalizedSecond = normalizeTip(second);
+
+  if (!normalizedFirst || !normalizedSecond) {
+    return false;
+  }
+
+  if (normalizedFirst === normalizedSecond) {
+    return true;
+  }
+
+  const firstWords = getWordSet(first);
+  const secondWords = getWordSet(second);
+
+  if (firstWords.size === 0 || secondWords.size === 0) {
+    return false;
+  }
+
+  const overlap = [...firstWords].filter((word) => secondWords.has(word)).length;
+  const overlapRatio = overlap / Math.min(firstWords.size, secondWords.size);
+
+  return overlapRatio >= 0.7;
+}
+
+function sanitizeTip(rawTip: string): string {
+  return rawTip.replace(/^["'\s]+|["'\s]+$/g, '').replace(/\s+/g, ' ').trim();
+}
+
 export default function DashboardScreen() {
   const db = useSQLiteContext();
   const tabBarHeight = useBottomTabBarHeight();
@@ -43,6 +91,7 @@ export default function DashboardScreen() {
   const [consistencyDays, setConsistencyDays] = useState(0);
   const [currentTip, setCurrentTip] = useState(NUTRITION_TIPS[0]);
   const [isLoadingTip, setIsLoadingTip] = useState(false);
+  const [recentTips, setRecentTips] = useState<string[]>([]);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -78,6 +127,16 @@ export default function DashboardScreen() {
 
   const loadSavedModelAndTip = async () => {
     try {
+      let savedTips: string[] = [];
+      const savedTipsRaw = await SecureStore.getItemAsync(RECENT_TIPS_STORAGE_KEY);
+      if (savedTipsRaw) {
+        const parsedTips = JSON.parse(savedTipsRaw);
+        if (Array.isArray(parsedTips)) {
+          savedTips = parsedTips.filter((tip): tip is string => typeof tip === 'string');
+          setRecentTips(savedTips);
+        }
+      }
+
       // Load API key and set nutrition tip
       const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
       
@@ -86,7 +145,7 @@ export default function DashboardScreen() {
       }
       
       // Then load nutrition tip
-      await loadNutritionTip();
+      await loadNutritionTip(savedTips);
     } catch (error) {
       console.error('Error loading API configuration in dashboard:', error);
       // Fallback to loading tip anyway
@@ -104,7 +163,53 @@ export default function DashboardScreen() {
   const calorieProgress = user ? dailyNutrition.calories / user.calorie_goal : 0;
   const waterProgress = user ? dailyNutrition.water / user.water_goal : 0;
 
-  const loadNutritionTip = async () => {
+  const saveTipHistory = async (tip: string, existingTips = recentTips) => {
+    const cleanTip = sanitizeTip(tip);
+    const updatedTips = [cleanTip, ...existingTips.filter((existingTip) => !areTipsTooSimilar(existingTip, cleanTip))]
+      .slice(0, MAX_RECENT_TIPS);
+
+    setRecentTips(updatedTips);
+    await SecureStore.setItemAsync(RECENT_TIPS_STORAGE_KEY, JSON.stringify(updatedTips));
+  };
+
+  const getCuratedFallbackTip = (existingTips = recentTips) => {
+    const disallowedTips = [currentTip, ...existingTips];
+    const freshTip = NUTRITION_TIPS.find(
+      (tip) => !disallowedTips.some((existingTip) => areTipsTooSimilar(existingTip, tip))
+    );
+
+    return freshTip || NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
+  };
+
+  const requestUniqueAiTip = async (apiKey: string, existingTips = recentTips) => {
+    let attemptHistory = [currentTip, ...existingTips].filter(Boolean);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      openRouterService.setApiKey(apiKey);
+
+      const aiTip = sanitizeTip(await openRouterService.generateNutritionTip({
+        currentTip,
+        recentTips: attemptHistory,
+        calorieGoal: user?.calorie_goal,
+        waterGoal: user?.water_goal,
+        currentCalories: dailyNutrition.calories,
+        currentWater: dailyNutrition.water,
+        weightGoal: user?.weight_goal,
+        activityLevel: user?.activity_level,
+      }));
+
+      const isTooSimilar = attemptHistory.some((previousTip) => areTipsTooSimilar(previousTip, aiTip));
+      if (!isTooSimilar) {
+        return aiTip;
+      }
+
+      attemptHistory = [aiTip, ...attemptHistory];
+    }
+
+    throw new Error('AI returned repeated nutrition tips');
+  };
+
+  const loadNutritionTip = async (existingTips = recentTips) => {
     try {
       const apiKey = await SecureStore.getItemAsync('openrouter_api_key');
       if (apiKey) {
@@ -113,24 +218,28 @@ export default function DashboardScreen() {
         
         // Try to generate AI nutrition tip
         try {
-          const aiTip = await openRouterService.generateNutritionTip();
+          const aiTip = await requestUniqueAiTip(apiKey, existingTips);
           setCurrentTip(aiTip);
+          await saveTipHistory(aiTip, existingTips);
         } catch (aiError) {
           console.error('Failed to generate AI tip:', aiError);
           // Fall back to curated tip if AI fails
-          const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
-          setCurrentTip(randomTip);
+          const fallbackTip = getCuratedFallbackTip(existingTips);
+          setCurrentTip(fallbackTip);
+          await saveTipHistory(fallbackTip, existingTips);
         }
       } else {
         // Use curated tips when no API key
         setIsLoadingTip(true);
-        const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
-        setCurrentTip(randomTip);
+        const fallbackTip = getCuratedFallbackTip(existingTips);
+        setCurrentTip(fallbackTip);
+        await saveTipHistory(fallbackTip, existingTips);
       }
     } catch (error) {
       console.error('Error loading nutrition tip:', error);
-      const randomTip = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
-      setCurrentTip(randomTip);
+      const fallbackTip = getCuratedFallbackTip(existingTips);
+      setCurrentTip(fallbackTip);
+      await saveTipHistory(fallbackTip, existingTips);
     } finally {
       setIsLoadingTip(false);
     }
@@ -171,7 +280,9 @@ export default function DashboardScreen() {
           <Text style={styles.tipsTitle}>Nutrition Tip</Text>
           <Button
             mode="text"
-            onPress={loadNutritionTip}
+            onPress={() => {
+              void loadNutritionTip();
+            }}
             loading={isLoadingTip}
             disabled={isLoadingTip}
             compact
