@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
-import { Text, Card, Button, Portal, Dialog } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Text, Card, Button, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { DatabaseService } from '../src/services/database';
 import { theme } from '../src/constants/theme';
+import { AppDialog } from '../src/components/AppDialog';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -64,15 +65,28 @@ export default function ManualFoodEntryScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [dialogState, setDialogState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: 'Error',
+    message: '',
+  });
+
+  const showMessage = (title: string, message: string) => {
+    setDialogState({ visible: true, title, message });
+  };
 
   const saveFoodEntry = async () => {
     if (!foodDescription.trim()) {
-      Alert.alert('Error', 'Please enter a food description.');
+      showMessage('Food Description Required', 'Please enter a food description before saving.');
       return;
     }
 
     if (!calories || isNaN(Number(calories))) {
-      Alert.alert('Error', 'Please enter valid calories.');
+      showMessage('Calories Required', 'Please enter a valid calorie value to continue.');
       return;
     }
 
@@ -115,28 +129,26 @@ export default function ManualFoodEntryScreen() {
       }
     } catch (error) {
       console.error('Error saving food entry:', error);
-      Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} food entry. Please try again.`);
+      showMessage('Save Failed', `Failed to ${isEditMode ? 'update' : 'save'} food entry. Please try again.`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const mealOptions = [
-    { value: 'breakfast', label: 'Breakfast', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
-    { value: 'lunch', label: 'Lunch', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
-    { value: 'dinner', label: 'Dinner', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
-    { value: 'snack', label: 'Snack', labelStyle: { fontSize: 12, marginHorizontal: 0 } },
-  ];
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons 
-          name="restaurant" 
-          size={24} 
-          color={theme.colors.textSecondary} 
-        />
-        <Text style={styles.title}>{isEditMode ? 'Edit Food Entry' : 'Add Food Entry'}</Text>
+        <View style={styles.headerBadge}>
+          <Ionicons 
+            name="restaurant" 
+            size={22} 
+            color={theme.colors.primary} 
+          />
+        </View>
+        <View style={styles.headerCopy}>
+          <Text style={styles.eyebrow}>{isEditMode ? 'Edit meal' : 'Manual entry'}</Text>
+          <Text style={styles.title}>{isEditMode ? 'Refine your food log' : 'Log a food item'}</Text>
+        </View>
       </View>
 
       <Card style={styles.card}>
@@ -280,37 +292,34 @@ export default function ManualFoodEntryScreen() {
 
       {/* Custom Success Dialog */}
       <Portal>
-        <Dialog 
+        <AppDialog
           visible={showSuccessDialog} 
           onDismiss={() => {
             setShowSuccessDialog(false);
             router.back();
           }}
-          style={styles.successDialog}
-        >
-          <Dialog.Content style={styles.successDialogContent}>
-            <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={48} color={theme.colors.primary} />
-            </View>
-            <Text style={styles.successTitle}>Success</Text>
-            <Text style={styles.successMessage}>
-              {successMessage}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.successDialogActions}>
-            <Button
-              mode="contained"
-              onPress={() => {
-                setShowSuccessDialog(false);
-                router.back();
-              }}
-              style={styles.successButton}
-              textColor={theme.colors.background}
-            >
-              OK
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+          title="Saved"
+          message={successMessage}
+          tone="success"
+          primaryAction={{
+            label: 'Continue',
+            onPress: () => {
+              setShowSuccessDialog(false);
+              router.back();
+            },
+          }}
+        />
+        <AppDialog
+          visible={dialogState.visible}
+          onDismiss={() => setDialogState((prev) => ({ ...prev, visible: false }))}
+          title={dialogState.title}
+          message={dialogState.message}
+          tone="error"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setDialogState((prev) => ({ ...prev, visible: false })),
+          }}
+        />
       </Portal>
     </ScrollView>
   );
@@ -326,17 +335,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
+    gap: theme.spacing.md,
+  },
+  headerBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(18,214,176,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(18,214,176,0.2)',
+  },
+  headerCopy: {
+    flex: 1,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
     color: theme.colors.text,
-    marginLeft: theme.spacing.sm,
   },
   card: {
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.md,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
     fontSize: 16,
@@ -429,44 +462,14 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
   },
   saveButton: {
     flex: 1,
     backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
   },
   bottomSpacing: {
     height: 40,
-  },
-  successDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-  },
-  successDialogContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-  },
-  successIconContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  successDialogActions: {
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-  },
-  successButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.xl,
   },
 });

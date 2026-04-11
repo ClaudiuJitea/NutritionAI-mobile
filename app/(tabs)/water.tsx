@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Alert, TextInput as RNTextInput } from 'react-native';
+import { View, ScrollView, StyleSheet, TextInput as RNTextInput } from 'react-native';
 import { Text, Card, Button, ProgressBar, IconButton, Portal, Dialog } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
 import { User } from '../../src/types/database';
 import { theme } from '../../src/constants/theme';
+import { AppDialog } from '../../src/components/AppDialog';
 
 const QUICK_ADD_AMOUNTS = [250, 500, 750, 1000]; // ml
 
@@ -53,6 +54,21 @@ export default function WaterScreen() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [inputAmount, setInputAmount] = useState('');
+  const [messageDialog, setMessageDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    tone: 'warning' | 'error';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    tone: 'warning',
+  });
+
+  const showMessage = (title: string, message: string, tone: 'warning' | 'error' = 'warning') => {
+    setMessageDialog({ visible: true, title, message, tone });
+  };
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
   const isToday = dateString === format(new Date(), 'yyyy-MM-dd');
@@ -72,17 +88,17 @@ export default function WaterScreen() {
 
   const addWater = async (amount: number) => {
     if (!isToday) {
-      Alert.alert('Cannot Add Water', 'You can only log water for today.');
+      showMessage('Today Only', 'You can only log water for the current day.');
       return;
     }
 
     setIsLoading(true);
     try {
       await dbService.addWaterIntake(amount, dateString);
-      await loadData();
+      setWaterIntake((current) => current + amount);
     } catch (error) {
       console.error('Error adding water:', error);
-      Alert.alert('Error', 'Failed to log water intake');
+      showMessage('Add Failed', 'Failed to log water intake.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -90,22 +106,22 @@ export default function WaterScreen() {
 
   const removeWater = async (amount: number) => {
     if (!isToday) {
-      Alert.alert('Cannot Remove Water', 'You can only modify water for today.');
+      showMessage('Today Only', 'You can only modify water for the current day.');
       return;
     }
 
     if (waterIntake < amount) {
-      Alert.alert('Invalid Amount', 'Cannot remove more water than logged.');
+      showMessage('Invalid Amount', 'Cannot remove more water than you have logged.');
       return;
     }
 
     setIsLoading(true);
     try {
       await dbService.addWaterIntake(-amount, dateString);
-      await loadData();
+      setWaterIntake((current) => Math.max(current - amount, 0));
     } catch (error) {
       console.error('Error removing water:', error);
-      Alert.alert('Error', 'Failed to remove water intake');
+      showMessage('Remove Failed', 'Failed to remove water intake.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +141,7 @@ export default function WaterScreen() {
   const waterGoal = user?.water_goal || 2500;
   const progress = Math.min(waterIntake / waterGoal, 1);
   const remainingWater = Math.max(waterGoal - waterIntake, 0);
-  const glassesConsumed = Math.floor(waterIntake / 250); // Assuming 250ml per glass
-  const glassesNeeded = Math.ceil(waterGoal / 250);
+  const progressPercent = Math.round(progress * 100);
 
   const getProgressColor = () => {
     if (waterIntake > waterGoal) return theme.colors.error;
@@ -143,16 +158,6 @@ export default function WaterScreen() {
     if (progress >= 0.2) return "Good start! Keep drinking!";
     return "Time to hydrate! Start your day right!";
   };
-
-  const WaterGlass = ({ filled, index }: { filled: boolean; index: number }) => (
-    <View style={styles.glassContainer}>
-      <Ionicons
-        name={filled ? 'water' : 'water-outline'}
-        size={32}
-        color={filled ? theme.colors.text : theme.colors.border}
-      />
-    </View>
-  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -197,6 +202,14 @@ export default function WaterScreen() {
       {/* Progress Card */}
       <Card style={styles.progressCard}>
         <Card.Content>
+          <View style={styles.progressBadgeRow}>
+            <View style={styles.progressBadge}>
+              <Ionicons name="water" size={16} color={getProgressColor()} />
+              <Text style={[styles.progressBadgeText, { color: getProgressColor() }]}>
+                Hydration score
+              </Text>
+            </View>
+          </View>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Daily Water Goal</Text>
             <Text style={styles.progressValue}>
@@ -227,24 +240,51 @@ export default function WaterScreen() {
         </Card.Content>
       </Card>
 
-      {/* Visual Glasses */}
+      {/* Hydration Visual */}
       <Card style={styles.glassesCard}>
         <Card.Content>
-          <Text style={styles.glassesTitle}>
-            Glasses: {glassesConsumed} / {glassesNeeded}
-          </Text>
-          <View style={styles.glassesGrid}>
-            {Array.from({ length: glassesNeeded }, (_, index) => (
-              <WaterGlass
-                key={index}
-                filled={index < glassesConsumed}
-                index={index}
-              />
-            ))}
+          <Text style={styles.glassesTitle}>Hydration level</Text>
+          <View style={styles.hydrationVisualRow}>
+            <View style={styles.bottleColumn}>
+              <View style={styles.bottleCap} />
+              <View style={styles.bottleBody}>
+                <View style={styles.bottleFillTrack}>
+                  <View
+                    style={[
+                      styles.bottleFill,
+                      {
+                        height: `${progressPercent}%`,
+                        backgroundColor: getProgressColor(),
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.bottleMarkers}>
+                  {[100, 75, 50, 25].map((marker) => (
+                    <View key={marker} style={styles.bottleMarkerRow}>
+                      <View style={styles.bottleMarkerLine} />
+                      <Text style={styles.bottleMarkerText}>{marker}%</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+            <View style={styles.hydrationStatsColumn}>
+              <View style={styles.hydrationStatCard}>
+                <Text style={styles.hydrationStatLabel}>Consumed</Text>
+                <Text style={styles.hydrationStatValue}>{waterIntake} ml</Text>
+              </View>
+              <View style={styles.hydrationStatCard}>
+                <Text style={styles.hydrationStatLabel}>Goal</Text>
+                <Text style={styles.hydrationStatValue}>{waterGoal} ml</Text>
+              </View>
+              <View style={styles.hydrationStatCard}>
+                <Text style={styles.hydrationStatLabel}>Remaining</Text>
+                <Text style={styles.hydrationStatValue}>{remainingWater} ml</Text>
+              </View>
+            </View>
           </View>
-          <Text style={styles.glassesSubtext}>
-            Each glass = 250ml
-          </Text>
+          <Text style={styles.glassesSubtext}>{progressPercent}% of your daily target</Text>
         </Card.Content>
       </Card>
 
@@ -264,6 +304,29 @@ export default function WaterScreen() {
                   contentStyle={styles.quickAddButtonContent}
                 >
                   +{amount}ml
+                </Button>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+      )}
+
+      {isToday && waterIntake > 0 && (
+        <Card style={styles.quickRemoveCard}>
+          <Card.Content>
+            <Text style={styles.quickRemoveTitle}>Quick Remove</Text>
+            <View style={styles.quickAddGrid}>
+              {QUICK_ADD_AMOUNTS.map((amount) => (
+                <Button
+                  key={amount}
+                  mode="outlined"
+                  onPress={() => removeWater(amount)}
+                  disabled={isLoading || amount > waterIntake}
+                  style={styles.quickRemoveButton}
+                  contentStyle={styles.quickAddButtonContent}
+                  textColor={theme.colors.error}
+                >
+                  -{amount}ml
                 </Button>
               ))}
             </View>
@@ -363,7 +426,7 @@ export default function WaterScreen() {
                   addWater(amount);
                   setShowAddDialog(false);
                 } else {
-                  Alert.alert('Invalid Amount', 'Please enter a value between 1 and 2000 ml.');
+                  showMessage('Invalid Amount', 'Please enter a value between 1 and 2000 ml.');
                 }
               }}
               style={styles.actionButton}
@@ -413,7 +476,7 @@ export default function WaterScreen() {
                   removeWater(amount);
                   setShowRemoveDialog(false);
                 } else {
-                  Alert.alert('Invalid Amount', `Please enter a value between 1 and ${waterIntake} ml.`);
+                  showMessage('Invalid Amount', `Please enter a value between 1 and ${waterIntake} ml.`);
                 }
               }}
               style={[styles.actionButton, { backgroundColor: theme.colors.error }]}
@@ -423,6 +486,17 @@ export default function WaterScreen() {
             </Button>
           </Dialog.Actions>
         </Dialog>
+        <AppDialog
+          visible={messageDialog.visible}
+          onDismiss={() => setMessageDialog((prev) => ({ ...prev, visible: false }))}
+          title={messageDialog.title}
+          message={messageDialog.message}
+          tone={messageDialog.tone}
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setMessageDialog((prev) => ({ ...prev, visible: false })),
+          }}
+        />
       </Portal>
     </View>
   );
@@ -472,6 +546,28 @@ const styles = StyleSheet.create({
   progressCard: {
     margin: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  progressBadgeRow: {
+    marginBottom: theme.spacing.md,
+  },
+  progressBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  progressBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   progressHeader: {
     flexDirection: 'row',
@@ -518,23 +614,107 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   glassesTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: theme.colors.text,
     textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  hydrationVisualRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing.lg,
     marginBottom: theme.spacing.md,
   },
-  glassesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
+  bottleColumn: {
+    alignItems: 'center',
   },
-  glassContainer: {
-    padding: theme.spacing.xs,
+  bottleCap: {
+    width: 30,
+    height: 14,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 4,
+  },
+  bottleBody: {
+    width: 94,
+    height: 176,
+    borderRadius: 28,
+    padding: 8,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+  },
+  bottleFillTrack: {
+    ...StyleSheet.absoluteFillObject,
+    top: 8,
+    right: 8,
+    bottom: 8,
+    left: 8,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  bottleFill: {
+    width: '100%',
+    borderRadius: 22,
+  },
+  bottleMarkers: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  bottleMarkerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bottleMarkerLine: {
+    width: 14,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  bottleMarkerText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  hydrationStatsColumn: {
+    flex: 1,
+    gap: theme.spacing.sm,
+  },
+  hydrationStatCard: {
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  hydrationStatLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+  hydrationStatValue: {
+    fontSize: 18,
+    color: theme.colors.text,
+    fontWeight: '600',
   },
   glassesSubtext: {
     fontSize: 12,
@@ -545,6 +725,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   quickAddTitle: {
     fontSize: 16,
@@ -562,6 +745,25 @@ const styles = StyleSheet.create({
     minWidth: '45%',
     borderColor: theme.colors.primary,
   },
+  quickRemoveCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  quickRemoveTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  quickRemoveButton: {
+    flex: 1,
+    minWidth: '45%',
+    borderColor: theme.colors.error,
+  },
   quickAddButtonContent: {
     height: 40,
   },
@@ -569,6 +771,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   customTitle: {
     fontSize: 16,
@@ -588,6 +793,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   tipsTitle: {
     fontSize: 16,

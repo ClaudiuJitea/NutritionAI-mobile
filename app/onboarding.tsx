@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Linking, TextInput as RNTextInput } from 'react-native';
-import { Text, Card, Button, ProgressBar, Dialog, Portal } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, Linking, TextInput as RNTextInput } from 'react-native';
+import { Text, Card, Button, ProgressBar, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { theme } from '../src/constants/theme';
+import { AppDialog } from '../src/components/AppDialog';
 
 const FormInput = ({
   label,
@@ -88,6 +89,15 @@ export default function OnboardingScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingApiKey, setIsTestingApiKey] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: 'Error',
+    message: '',
+  });
   
   const [formData, setFormData] = useState<OnboardingData>({
     name: '',
@@ -101,6 +111,10 @@ export default function OnboardingScreen() {
 
   const totalSteps = 6;
   const progress = (currentStep + 1) / totalSteps;
+
+  const showError = (title: string, message: string) => {
+    setErrorDialog({ visible: true, title, message });
+  };
 
   const updateFormData = (field: keyof OnboardingData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -155,7 +169,7 @@ export default function OnboardingScreen() {
 
   const completeOnboarding = async () => {
     if (!validateCurrentStep()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      showError('Missing Information', 'Please fill in all required fields before continuing.');
       return;
     }
 
@@ -166,17 +180,17 @@ export default function OnboardingScreen() {
       const customCalories = formData.custom_calories ? parseInt(formData.custom_calories) : undefined;
 
       if (isNaN(weight) || weight <= 0 || weight > 300) {
-        Alert.alert('Error', 'Please enter a valid weight between 1-300 kg');
+        showError('Invalid Weight', 'Please enter a valid weight between 1 and 300 kg.');
         return;
       }
 
       if (isNaN(age) || age < 13 || age > 120) {
-        Alert.alert('Error', 'Please enter a valid age between 13-120 years');
+        showError('Invalid Age', 'Please enter a valid age between 13 and 120 years.');
         return;
       }
 
       if (customCalories && (isNaN(customCalories) || customCalories < 800 || customCalories > 5000)) {
-        Alert.alert('Error', 'Custom calories should be between 800-5000');
+        showError('Invalid Calories', 'Custom calories should be between 800 and 5000.');
         return;
       }
 
@@ -196,7 +210,7 @@ export default function OnboardingScreen() {
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      Alert.alert('Error', 'Failed to save your profile. Please try again.');
+      showError('Setup Failed', 'Failed to save your profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -315,34 +329,31 @@ export default function OnboardingScreen() {
 
       {/* Success Dialog */}
       <Portal>
-        <Dialog 
-          visible={showSuccessDialog} 
-          onDismiss={() => {}} // Prevent dismissing by tapping outside
-          style={styles.successDialog}
-        >
-          <Dialog.Content style={styles.successDialogContent}>
-            <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={80} color={theme.colors.primary} />
-            </View>
-            <Text style={styles.successTitle}>Welcome to NutritionAI!</Text>
-            <Text style={styles.successMessage}>
-              Your profile has been set up successfully. You can always update your goals in Settings.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.successDialogActions}>
-            <Button
-              mode="contained"
-              onPress={() => {
-                setShowSuccessDialog(false);
-                router.replace('/(tabs)/');
-              }}
-              style={styles.successButton}
-              textColor={theme.colors.background}
-            >
-              Get Started
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <AppDialog
+          visible={showSuccessDialog}
+          onDismiss={() => {}}
+          title="Welcome to NutritionAI!"
+          message="Your profile has been set up successfully. You can always update your goals in Settings."
+          tone="success"
+          primaryAction={{
+            label: 'Get Started',
+            onPress: () => {
+              setShowSuccessDialog(false);
+              router.replace('/(tabs)/');
+            },
+          }}
+        />
+        <AppDialog
+          visible={errorDialog.visible}
+          onDismiss={() => setErrorDialog((prev) => ({ ...prev, visible: false }))}
+          title={errorDialog.title}
+          message={errorDialog.message}
+          tone="error"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setErrorDialog((prev) => ({ ...prev, visible: false })),
+          }}
+        />
       </Portal>
     </View>
   );
@@ -686,86 +697,40 @@ const ApiKeySetupStep = ({
 
       {/* Custom Dialogs */}
       <Portal>
-        {/* API Key Required Dialog */}
-        <Dialog 
-          visible={showApiKeyRequiredDialog} 
+        <AppDialog
+          visible={showApiKeyRequiredDialog}
           onDismiss={() => setShowApiKeyRequiredDialog(false)}
-          style={styles.customDialog}
-        >
-          <Dialog.Content style={styles.dialogContent}>
-            <View style={styles.dialogIconContainer}>
-              <Ionicons name="key" size={60} color={theme.colors.warning} />
-            </View>
-            <Text style={styles.dialogTitle}>API Key Required</Text>
-            <Text style={styles.dialogMessage}>
-              Please enter an API key to test the connection.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.dialogActions}>
-            <Button
-              mode="contained"
-              onPress={() => setShowApiKeyRequiredDialog(false)}
-              style={styles.dialogButton}
-              buttonColor={theme.colors.primary}
-              textColor={theme.colors.background}
-            >
-              OK
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-
-        {/* Success Dialog */}
-        <Dialog 
-          visible={showSuccessDialog} 
+          title="API Key Required"
+          message="Please enter an API key to test the connection."
+          tone="warning"
+          icon="key"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setShowApiKeyRequiredDialog(false),
+          }}
+        />
+        <AppDialog
+          visible={showSuccessDialog}
           onDismiss={() => setShowSuccessDialog(false)}
-          style={styles.customDialog}
-        >
-          <Dialog.Content style={styles.dialogContent}>
-            <Text style={styles.dialogTitle}>Success!</Text>
-            <Text style={styles.dialogMessage}>
-              API key is valid and working correctly.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.dialogActions}>
-            <Button
-              mode="contained"
-              onPress={() => setShowSuccessDialog(false)}
-              style={styles.dialogButton}
-              buttonColor={theme.colors.success}
-              textColor={theme.colors.background}
-            >
-              OK
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-
-        {/* Error Dialog */}
-        <Dialog 
-          visible={showErrorDialog} 
+          title="Success"
+          message="API key is valid and working correctly."
+          tone="success"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setShowSuccessDialog(false),
+          }}
+        />
+        <AppDialog
+          visible={showErrorDialog}
           onDismiss={() => setShowErrorDialog(false)}
-          style={styles.customDialog}
-        >
-          <Dialog.Content style={styles.dialogContent}>
-            <View style={styles.dialogIconContainer}>
-              <Ionicons name="close-circle" size={60} color={theme.colors.error} />
-            </View>
-            <Text style={styles.dialogTitle}>Invalid API Key</Text>
-            <Text style={styles.dialogMessage}>
-              ❌ The API key is invalid or there was a connection error. Please check your key and try again.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.dialogActions}>
-            <Button
-              mode="contained"
-              onPress={() => setShowErrorDialog(false)}
-              style={styles.dialogButton}
-              buttonColor={theme.colors.error}
-              textColor={theme.colors.background}
-            >
-              OK
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+          title="Invalid API Key"
+          message="The API key is invalid or there was a connection error. Please check your key and try again."
+          tone="error"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setShowErrorDialog(false),
+          }}
+        />
       </Portal>
     </>
   );
@@ -1023,37 +988,6 @@ const styles = StyleSheet.create({
   navSpacer: {
     flex: 1,
   },
-  successDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-  },
-  successDialogContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-  },
-  successIconContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  successMessage: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  successDialogActions: {
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  successButton: {
-    minWidth: 120,
-  },
   testButton: {
     marginTop: theme.spacing.xs,
   },
@@ -1089,36 +1023,5 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
     flex: 1,
-  },
-  customDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-  },
-  dialogContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-  },
-  dialogIconContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  dialogTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  dialogMessage: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  dialogActions: {
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  dialogButton: {
-    minWidth: 120,
   },
 }); 

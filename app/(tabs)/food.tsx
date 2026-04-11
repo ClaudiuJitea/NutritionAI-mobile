@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity } from 'react-native';
-import { Text, Card, IconButton, Chip, Divider, Portal, Dialog, Button } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import { Text, Card, IconButton, Chip, Portal, Button } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router, useFocusEffect } from 'expo-router';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { DatabaseService } from '../../src/services/database';
 import { FoodEntry } from '../../src/types/database';
 import { theme } from '../../src/constants/theme';
+import { AppDialog } from '../../src/components/AppDialog';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -17,6 +18,13 @@ const MEAL_ICONS: Record<MealType, string> = {
   lunch: 'partly-sunny',
   dinner: 'moon',
   snack: 'cafe',
+};
+
+const EMPTY_MEAL_ICONS: Record<MealType, string> = {
+  breakfast: 'cafe-outline',
+  lunch: 'restaurant-outline',
+  dinner: 'fish-outline',
+  snack: 'ice-cream-outline',
 };
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -35,6 +43,7 @@ export default function FoodLogScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
+  const [showDeleteError, setShowDeleteError] = useState(false);
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
 
@@ -67,7 +76,7 @@ export default function FoodLogScreen() {
         setEntryToDelete(null);
             } catch (error) {
               console.error('Error deleting food entry:', error);
-              Alert.alert('Error', 'Failed to delete food entry');
+              setShowDeleteError(true);
         setShowDeleteDialog(false);
         setEntryToDelete(null);
             }
@@ -222,8 +231,15 @@ export default function FoodLogScreen() {
         {entries.length === 0 ? (
           <Card style={styles.emptyMealCard}>
             <Card.Content style={styles.emptyMealContent}>
-              <Text style={styles.emptyMealText}>No items logged</Text>
-              <Text style={styles.emptyMealSubtext}>Tap + to add food</Text>
+              <View style={styles.emptyMealIcon}>
+                <Ionicons
+                  name={EMPTY_MEAL_ICONS[mealType] as any}
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <Text style={styles.emptyMealText}>Nothing logged yet</Text>
+              <Text style={styles.emptyMealSubtext}>Tap + to add food for this meal</Text>
             </Card.Content>
           </Card>
         ) : (
@@ -318,39 +334,34 @@ export default function FoodLogScreen() {
 
       {/* Delete Confirmation Dialog */}
       <Portal>
-        <Dialog 
-          visible={showDeleteDialog} 
+        <AppDialog
+          visible={showDeleteDialog}
           onDismiss={cancelDelete}
-          style={styles.deleteDialog}
-        >
-          <Dialog.Content style={styles.deleteDialogContent}>
-            <View style={styles.deleteIconContainer}>
-              <Ionicons name="trash" size={48} color={theme.colors.error} />
-            </View>
-            <Text style={styles.deleteTitle}>Delete Entry</Text>
-            <Text style={styles.deleteMessage}>
-              Are you sure you want to delete this food entry?
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.deleteDialogActions}>
-            <Button
-              mode="outlined"
-              onPress={cancelDelete}
-              style={styles.cancelButton}
-              textColor={theme.colors.text}
-            >
-              CANCEL
-            </Button>
-            <Button
-              mode="contained"
-              onPress={confirmDeleteEntry}
-              style={styles.deleteButton}
-              textColor={theme.colors.background}
-            >
-              DELETE
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+          title="Delete Entry"
+          message="Are you sure you want to delete this food entry?"
+          tone="error"
+          icon="trash"
+          primaryAction={{
+            label: 'Delete',
+            onPress: confirmDeleteEntry,
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onPress: cancelDelete,
+            mode: 'outlined',
+          }}
+        />
+        <AppDialog
+          visible={showDeleteError}
+          onDismiss={() => setShowDeleteError(false)}
+          title="Delete Failed"
+          message="We couldn't remove this food entry. Please try again."
+          tone="error"
+          primaryAction={{
+            label: 'OK',
+            onPress: () => setShowDeleteError(false),
+          }}
+        />
       </Portal>
     </View>
   );
@@ -372,7 +383,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.06)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -437,24 +448,33 @@ const styles = StyleSheet.create({
   },
   emptyMealCard: {
     marginHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderStyle: 'dashed',
+    backgroundColor: theme.colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(18,214,176,0.18)',
     borderRadius: theme.borderRadius.xl,
   },
   emptyMealContent: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
   },
+  emptyMealIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(18,214,176,0.12)',
+    marginBottom: theme.spacing.sm,
+  },
   emptyMealText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.text,
   },
   emptyMealSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 6,
   },
   entryCard: {
     marginHorizontal: theme.spacing.lg,
@@ -462,7 +482,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   entryContent: {
     paddingVertical: 18,
@@ -539,14 +559,12 @@ const styles = StyleSheet.create({
   addMoreCard: {
     marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.xs,
-    backgroundColor: 'transparent',
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(18,214,176,0.16)',
     elevation: 0,
     shadowOpacity: 0,
-    borderWidth: 0,
-    borderColor: 'transparent',
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 0,
   },
   addMoreContent: {
     flexDirection: 'row',
@@ -561,47 +579,6 @@ const styles = StyleSheet.create({
   addMoreText: {
     fontSize: 14,
     color: theme.colors.primary,
-    fontWeight: '500',
-  },
-  // Delete Dialog Styles
-  deleteDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    margin: theme.spacing.lg,
-  },
-  deleteDialogContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-  },
-  deleteIconContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  deleteTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  deleteMessage: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  deleteDialogActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
-  cancelButton: {
-    flex: 1,
-    borderColor: theme.colors.border,
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: theme.colors.error,
+    fontWeight: '700',
   },
 });

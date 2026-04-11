@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TextInput as RNTextInput } from 'react-native';
-import { Text, Card, Button, Dialog, Portal } from 'react-native-paper';
+import { Text, Card, Button, Portal } from 'react-native-paper';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -9,30 +9,7 @@ import { DatabaseService } from '../src/services/database';
 import { OpenRouterService } from '../src/services/openrouter';
 import { User } from '../src/types/database';
 import { theme } from '../src/constants/theme';
-
-const ThemedDialog = ({
-  visible,
-  onDismiss,
-  title,
-  children,
-  actions,
-}: {
-  visible: boolean;
-  onDismiss: () => void;
-  title: string;
-  children: React.ReactNode;
-  actions: React.ReactNode;
-}) => (
-  <Dialog visible={visible} onDismiss={onDismiss} style={styles.appDialog}>
-    <Dialog.Title style={styles.appDialogTitle}>{title}</Dialog.Title>
-    <Dialog.Content>
-      <Text style={styles.appDialogText}>{children}</Text>
-    </Dialog.Content>
-    <Dialog.Actions style={styles.appDialogActions}>
-      {actions}
-    </Dialog.Actions>
-  </Dialog>
-);
+import { AppDialog } from '../src/components/AppDialog';
 
 // Extract components outside to prevent re-creation
 const ProfileInput = ({ value, onChangeText }: { value: string; onChangeText: (value: string) => void }) => {
@@ -545,85 +522,83 @@ export default function SettingsScreen() {
 
       {/* Success Dialogs */}
       <Portal>
-        <ThemedDialog visible={showApiKeySuccessDialog} onDismiss={() => setShowApiKeySuccessDialog(false)} title="API Key Saved" actions={[
-          <Button key="ok" onPress={() => setShowApiKeySuccessDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          API key saved successfully.
-        </ThemedDialog>
+        <AppDialog
+          visible={showApiKeySuccessDialog}
+          onDismiss={() => setShowApiKeySuccessDialog(false)}
+          title="API Key Saved"
+          message="API key saved successfully."
+          tone="success"
+          primaryAction={{ label: 'OK', onPress: () => setShowApiKeySuccessDialog(false) }}
+        />
+        <AppDialog
+          visible={showConnectionSuccessDialog}
+          onDismiss={() => setShowConnectionSuccessDialog(false)}
+          title="Connection Test"
+          message="Successfully connected to OpenRouter API."
+          tone="success"
+          primaryAction={{ label: 'OK', onPress: () => setShowConnectionSuccessDialog(false) }}
+        />
+        <AppDialog
+          visible={showSettingsSuccessDialog}
+          onDismiss={() => setShowSettingsSuccessDialog(false)}
+          title="Settings Saved"
+          message="Your settings have been updated successfully."
+          tone="success"
+          primaryAction={{ label: 'OK', onPress: () => setShowSettingsSuccessDialog(false) }}
+        />
 
-        <ThemedDialog visible={showConnectionSuccessDialog} onDismiss={() => setShowConnectionSuccessDialog(false)} title="Connection Test" actions={[
-          <Button key="ok" onPress={() => setShowConnectionSuccessDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Successfully connected to OpenRouter API.
-        </ThemedDialog>
+        <AppDialog
+          visible={showApiKeyErrorDialog}
+          onDismiss={() => setShowApiKeyErrorDialog(false)}
+          title="Error"
+          message="Please enter a valid API key."
+          tone="error"
+          primaryAction={{ label: 'OK', onPress: () => setShowApiKeyErrorDialog(false) }}
+        />
+        <AppDialog
+          visible={showConnectionErrorDialog}
+          onDismiss={() => setShowConnectionErrorDialog(false)}
+          title="Connection Failed"
+          message="Could not connect to OpenRouter API. Please check your API key and internet connection."
+          tone="error"
+          primaryAction={{ label: 'OK', onPress: () => setShowConnectionErrorDialog(false) }}
+        />
+        <AppDialog
+          visible={showSettingsErrorDialog}
+          onDismiss={() => setShowSettingsErrorDialog(false)}
+          title="Error"
+          message="Failed to save settings. Please try again."
+          tone="error"
+          primaryAction={{ label: 'OK', onPress: () => setShowSettingsErrorDialog(false) }}
+        />
+        <AppDialog
+          visible={showApiKeyRequiredDialog}
+          onDismiss={() => setShowApiKeyRequiredDialog(false)}
+          title="API Key Required"
+          message="Please enter an API key first to test the connection."
+          tone="warning"
+          icon="key"
+          primaryAction={{ label: 'OK', onPress: () => setShowApiKeyRequiredDialog(false) }}
+        />
 
-        <ThemedDialog visible={showSettingsSuccessDialog} onDismiss={() => setShowSettingsSuccessDialog(false)} title="Settings Saved" actions={[
-          <Button key="ok" onPress={() => setShowSettingsSuccessDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Your settings have been updated successfully.
-        </ThemedDialog>
-
-        {/* Error Dialogs */}
-        <ThemedDialog visible={showApiKeyErrorDialog} onDismiss={() => setShowApiKeyErrorDialog(false)} title="Error" actions={[
-          <Button key="ok" onPress={() => setShowApiKeyErrorDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Please enter a valid API key.
-        </ThemedDialog>
-
-        <ThemedDialog visible={showConnectionErrorDialog} onDismiss={() => setShowConnectionErrorDialog(false)} title="Connection Failed" actions={[
-          <Button key="ok" onPress={() => setShowConnectionErrorDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Could not connect to OpenRouter API. Please check your API key and internet connection.
-        </ThemedDialog>
-
-        <ThemedDialog visible={showSettingsErrorDialog} onDismiss={() => setShowSettingsErrorDialog(false)} title="Error" actions={[
-          <Button key="ok" onPress={() => setShowSettingsErrorDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Failed to save settings. Please try again.
-        </ThemedDialog>
-
-        <ThemedDialog visible={showApiKeyRequiredDialog} onDismiss={() => setShowApiKeyRequiredDialog(false)} title="API Key Required" actions={[
-          <Button key="ok" onPress={() => setShowApiKeyRequiredDialog(false)} textColor={theme.colors.primary}>
-            OK
-          </Button>
-        ]}>
-          Please enter an API key first to test the connection.
-        </ThemedDialog>
-
-        {/* Confirmation Dialogs */}
-        <ThemedDialog visible={showResetConfirmDialog} onDismiss={() => setShowResetConfirmDialog(false)} title="Reset Onboarding" actions={[
-          <Button key="cancel" onPress={() => setShowResetConfirmDialog(false)} textColor={theme.colors.textSecondary}>
-            Cancel
-          </Button>,
-          <Button key="reset" onPress={handleResetConfirm} textColor={theme.colors.primary}>
-            Reset
-          </Button>
-        ]}>
-          This will reset the onboarding process. You'll need to go through setup again. Continue?
-        </ThemedDialog>
-
-        <ThemedDialog visible={showClearDataConfirmDialog} onDismiss={() => setShowClearDataConfirmDialog(false)} title="Clear All Data" actions={[
-          <Button key="cancel" onPress={() => setShowClearDataConfirmDialog(false)} textColor={theme.colors.textSecondary}>
-            Cancel
-          </Button>,
-          <Button key="delete" onPress={handleClearDataConfirm} textColor={theme.colors.error}>
-            Delete All
-          </Button>
-        ]}>
-          This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?
-        </ThemedDialog>
+        <AppDialog
+          visible={showResetConfirmDialog}
+          onDismiss={() => setShowResetConfirmDialog(false)}
+          title="Reset Onboarding"
+          message="This will reset the onboarding process. You'll need to go through setup again. Continue?"
+          tone="warning"
+          primaryAction={{ label: 'Reset', onPress: handleResetConfirm }}
+          secondaryAction={{ label: 'Cancel', onPress: () => setShowResetConfirmDialog(false), mode: 'outlined' }}
+        />
+        <AppDialog
+          visible={showClearDataConfirmDialog}
+          onDismiss={() => setShowClearDataConfirmDialog(false)}
+          title="Clear All Data"
+          message="This will permanently delete all your food entries, water intake, and settings. This action cannot be undone. Continue?"
+          tone="error"
+          primaryAction={{ label: 'Delete All', onPress: handleClearDataConfirm }}
+          secondaryAction={{ label: 'Cancel', onPress: () => setShowClearDataConfirmDialog(false), mode: 'outlined' }}
+        />
       </Portal>
     </View>
   );

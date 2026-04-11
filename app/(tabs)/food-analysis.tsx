@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Alert, Image, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
-import { Text, Button, Card, ActivityIndicator, Portal, Dialog } from 'react-native-paper';
+import { View, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Text, Button, Card, ActivityIndicator, Portal } from 'react-native-paper';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -15,6 +15,7 @@ import { DatabaseService } from '../../src/services/database';
 import { OpenRouterService } from '../../src/services/openrouter';
 import { NutritionAnalysisResponse } from '../../src/types/api';
 import { theme } from '../../src/constants/theme';
+import { AppDialog } from '../../src/components/AppDialog';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type AnalysisStep = 'camera' | 'analyzing' | 'review' | 'saving';
@@ -431,22 +432,48 @@ export default function FoodAnalysisScreen() {
 
   const renderErrorDialog = () => (
     <Portal>
-      <Dialog visible={showErrorDialog} onDismiss={dismissErrorDialog} style={styles.appDialog}>
-        <Dialog.Title style={styles.appDialogTitle}>{errorDialogTitle}</Dialog.Title>
-        <Dialog.Content>
-          <Text style={styles.appDialogText}>{errorDialogMessage}</Text>
-        </Dialog.Content>
-        <Dialog.Actions style={styles.appDialogActions}>
-          {errorDialogSecondaryLabel ? (
-            <Button onPress={() => (errorDialogSecondaryAction ?? dismissErrorDialog)()} textColor={theme.colors.textSecondary}>
-              {errorDialogSecondaryLabel}
-            </Button>
-          ) : null}
-          <Button onPress={() => (errorDialogPrimaryAction ?? dismissErrorDialog)()} textColor={theme.colors.primary}>
-            {errorDialogPrimaryLabel}
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
+      <AppDialog
+        visible={showErrorDialog}
+        onDismiss={dismissErrorDialog}
+        title={errorDialogTitle}
+        message={errorDialogMessage}
+        tone="error"
+        primaryAction={{
+          label: errorDialogPrimaryLabel,
+          onPress: () => (errorDialogPrimaryAction ?? dismissErrorDialog)(),
+        }}
+        secondaryAction={
+          errorDialogSecondaryLabel
+            ? {
+                label: errorDialogSecondaryLabel,
+                onPress: () => (errorDialogSecondaryAction ?? dismissErrorDialog)(),
+                mode: 'outlined',
+              }
+            : undefined
+        }
+      />
+    </Portal>
+  );
+
+  const renderSuccessDialog = () => (
+    <Portal>
+      <AppDialog
+        visible={showSuccessDialog}
+        onDismiss={() => {
+          setShowSuccessDialog(false);
+          resetAnalysis();
+        }}
+        title="Saved"
+        message="Food entry has been saved to your log."
+        tone="success"
+        primaryAction={{
+          label: 'Continue',
+          onPress: () => {
+            setShowSuccessDialog(false);
+            resetAnalysis();
+          },
+        }}
+      />
     </Portal>
   );
 
@@ -531,40 +558,7 @@ export default function FoodAnalysisScreen() {
         </View>
       </View>
         
-        {/* Success Dialog */}
-        <Portal>
-          <Dialog 
-            visible={showSuccessDialog} 
-            onDismiss={() => {
-              setShowSuccessDialog(false);
-              resetAnalysis();
-            }}
-            style={styles.successDialog}
-          >
-            <Dialog.Content style={styles.successDialogContent}>
-              <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
-              </View>
-              <Text style={styles.successTitle}>Success!</Text>
-              <Text style={styles.successMessage}>
-                Food entry has been saved to your log.
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions style={styles.successDialogActions}>
-              <Button
-                mode="contained"
-                onPress={() => {
-                  setShowSuccessDialog(false);
-                  resetAnalysis();
-                }}
-                style={styles.successButton}
-                textColor={theme.colors.background}
-              >
-                OK
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-	        </Portal>
+        {renderSuccessDialog()}
           {renderErrorDialog()}
 	      </>
 	    );
@@ -754,40 +748,7 @@ export default function FoodAnalysisScreen() {
         
         </ScrollView>
         
-        {/* Success Dialog */}
-        <Portal>
-          <Dialog 
-            visible={showSuccessDialog} 
-            onDismiss={() => {
-              setShowSuccessDialog(false);
-              resetAnalysis();
-            }}
-            style={styles.successDialog}
-          >
-            <Dialog.Content style={styles.successDialogContent}>
-              <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
-              </View>
-              <Text style={styles.successTitle}>Success!</Text>
-              <Text style={styles.successMessage}>
-                Food entry has been saved to your log.
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions style={styles.successDialogActions}>
-              <Button
-                mode="contained"
-                onPress={() => {
-                  setShowSuccessDialog(false);
-                  resetAnalysis();
-                }}
-                style={styles.successButton}
-                textColor={theme.colors.background}
-              >
-                OK
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-	        </Portal>
+        {renderSuccessDialog()}
           {renderErrorDialog()}
 	      </>
 	    );
@@ -1096,61 +1057,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 20, // Additional bottom spacing
-  },
-  // Success Dialog Styles
-  successDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    margin: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  successDialogContent: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-  },
-  successIconContainer: {
-    marginBottom: theme.spacing.lg,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  successMessage: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  successDialogActions: {
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-  },
-  successButton: {
-    backgroundColor: theme.colors.primary,
-    minWidth: 120,
-  },
-  appDialog: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    margin: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  appDialogTitle: {
-    color: theme.colors.text,
-  },
-  appDialogText: {
-    color: theme.colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  appDialogActions: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
   },
 });
